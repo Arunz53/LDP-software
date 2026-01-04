@@ -1,0 +1,52 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/accounts_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Accounts Management"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_gravity="center"/>
+
+    <EditText
+        android:id="@+id/account_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Account Name"
+        android:inputType="text"/>
+
+    <EditText
+        android:id="@+id/account_balance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Account Balance"
+        android:inputType="numberDecimal"/>
+
+    <Button
+        android:id="@+id/save_account_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Account"
+        android:layout_marginTop="16dp"/>
+
+    <TextView
+        android:id="@+id/accounts_list_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Existing Accounts"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp"/>
+
+    <ListView
+        android:id="@+id/accounts_list_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"/>
+
+</LinearLayout>

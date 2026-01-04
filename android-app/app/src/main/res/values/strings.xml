@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">LDP Software</string>
+    <string name="login_title">Login</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="login_button">Login</string>
+    <string name="lab_report_title">Lab Reports</string>
+    <string name="data_entry_title">Data Entry</string>
+    <string name="transport_title">Transport</string>
+    <string name="accounts_title">Accounts</string>
+    <string name="vendor_creation">Vendor Creation</string>
+    <string name="milk_type">Milk Type</string>
+    <string name="vehicle_info">Vehicle Info</string>
+    <string name="purchase_data">Purchase Data</string>
+    <string name="transport_data">Transport Data</string>
+    <string name="account_management">Account Management</string>
+</resources>

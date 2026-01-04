@@ -1,0 +1,47 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/titleTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="LDP Software"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_gravity="center"
+        android:paddingBottom="24dp"/>
+
+    <Button
+        android:id="@+id/loginButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Login"/>
+
+    <Button
+        android:id="@+id/labReportButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Lab Reports"/>
+
+    <Button
+        android:id="@+id/dataEntryButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Data Entry"/>
+
+    <Button
+        android:id="@+id/transportButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Transport"/>
+
+    <Button
+        android:id="@+id/accountsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Accounts"/>
+
+</LinearLayout>
