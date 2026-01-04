@@ -73,10 +73,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [currentUser, setCurrentUser] = useState<User | undefined>(undefined);
     const [userRole, setUserRole] = useState<UserRole | undefined>();
     const [isBootstrapped, setIsBootstrapped] = useState(false);
-    const [vendors, setVendors] = useState<Vendor[]>(initialVendors);
-    const [milkTypes, setMilkTypes] = useState<MilkType[]>(initialMilkTypes);
-    const [vehicles, setVehicles] = useState<VehicleInfo[]>(initialVehicles);
-    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const [vendors, setVendors] = useState<Vendor[]>(() => {
+        const stored = localStorage.getItem('ldp_vendors');
+        return stored ? JSON.parse(stored) : initialVendors;
+    });
+    const [milkTypes, setMilkTypes] = useState<MilkType[]>(() => {
+        const stored = localStorage.getItem('ldp_milkTypes');
+        return stored ? JSON.parse(stored) : initialMilkTypes;
+    });
+    const [vehicles, setVehicles] = useState<VehicleInfo[]>(() => {
+        const stored = localStorage.getItem('ldp_vehicles');
+        return stored ? JSON.parse(stored) : initialVehicles;
+    });
+    const [purchases, setPurchases] = useState<Purchase[]>(() => {
+        const stored = localStorage.getItem('ldp_purchases');
+        return stored ? JSON.parse(stored) : [];
+    });
 
     useEffect(() => {
         const stored = localStorage.getItem('ldp_session');
@@ -92,6 +104,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setIsBootstrapped(true);
     }, []);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_vendors', JSON.stringify(vendors));
+    }, [vendors]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_milkTypes', JSON.stringify(milkTypes));
+    }, [milkTypes]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_vehicles', JSON.stringify(vehicles));
+    }, [vehicles]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_purchases', JSON.stringify(purchases));
+    }, [purchases]);
 
     const login = async (usernameOrEmail: string, password: string) => {
         const match = seedUsers.find(

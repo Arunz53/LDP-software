@@ -18,6 +18,7 @@ const VendorForm: React.FC = () => {
     const { addVendor, vendors, nextVendorCode } = useData();
     const [form, setForm] = useState<Omit<Vendor, 'id' | 'code'>>({ ...emptyForm });
     const [message, setMessage] = useState('');
+    const [showForm, setShowForm] = useState(false);
 
     const latestCode = useMemo(() => nextVendorCode(), [vendors.length]);
 
@@ -34,11 +35,92 @@ const VendorForm: React.FC = () => {
         addVendor({ ...form, code: latestCode });
         setMessage(`Saved vendor ${form.name} with code ${latestCode}`);
         setForm({ ...emptyForm, state: form.state });
+        setShowForm(false);
     };
+
+    if (!showForm) {
+        return (
+            <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h2>Vendors List</h2>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        style={{
+                            padding: '10px 20px',
+                            background: 'linear-gradient(90deg, #1d4ed8, #0ea5e9)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 10,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        + Vendor Creation Entry
+                    </button>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Vendor Name</th>
+                                <th>Owner Name</th>
+                                <th>Mobile</th>
+                                <th>State</th>
+                                <th>City</th>
+                                <th>GST Number</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {vendors.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} style={{ textAlign: 'center', padding: 20 }}>
+                                        No vendors found. Click "Vendor Creation Entry" to add one.
+                                    </td>
+                                </tr>
+                            ) : (
+                                vendors.map((vendor) => (
+                                    <tr key={vendor.id}>
+                                        <td>{vendor.code}</td>
+                                        <td>{vendor.name}</td>
+                                        <td>{vendor.ownerName}</td>
+                                        <td>{vendor.mobileNumber}</td>
+                                        <td>{vendor.state}</td>
+                                        <td>{vendor.city}</td>
+                                        <td>{vendor.gstNumber}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{ maxWidth: 720, margin: '16px auto' }}>
-            <h2>Vendor Creation</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2>Vendor Creation</h2>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setShowForm(false);
+                        setMessage('');
+                    }}
+                    style={{
+                        padding: '8px 16px',
+                        background: '#64748b',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                    }}
+                >
+                    ← Back to List
+                </button>
+            </div>
             <p>Vendor code auto: {latestCode}</p>
             <form onSubmit={handleSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
