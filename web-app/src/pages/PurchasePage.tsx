@@ -25,8 +25,9 @@ const emptyLine = (milkTypeId: number, compartment: PurchaseLine['compartment'])
 });
 
 const PurchasePage: React.FC = () => {
-    const { vendors, milkTypes, addPurchase, purchases, updatePurchaseStatus } = useData();
+    const { vendors, milkTypes, addPurchase, purchases, updatePurchaseStatus, vehicles } = useData();
     const defaultState: StateCode = vendors[0]?.state || 'Tamil Nadu';
+    const [showForm, setShowForm] = useState(false);
     const [purchaseDate, setPurchaseDate] = useState(todayIso());
     const [state, setState] = useState<StateCode>(defaultState);
     const [vendorId, setVendorId] = useState<number | ''>(vendors[0]?.id ?? '');
@@ -41,6 +42,7 @@ const PurchasePage: React.FC = () => {
     const [fromDate, setFromDate] = useState(todayIso());
     const [toDate, setToDate] = useState(todayIso());
     const [statusFilter, setStatusFilter] = useState<'All' | 'Delivered' | 'Accepted' | 'Rejected'>('All');
+    const [isFiltered, setIsFiltered] = useState(false);
 
     const filteredVendors = useMemo(
         () =>
@@ -102,9 +104,21 @@ const PurchasePage: React.FC = () => {
             lines,
         });
         setMessage(`Saved purchase ${invoiceNo}`);
+        setShowForm(false);
+        // Reset form
+        setPurchaseDate(todayIso());
+        setVendorId(vendors[0]?.id ?? '');
+        setVehicleNumber('');
+        setDriverName('');
+        setDriverMobile('');
+        setLines([emptyLine(milkTypes[0]?.id || 1, 'Front')]);
+        setSearchVendor('');
     };
 
     const filteredPurchases = useMemo(() => {
+        if (!isFiltered) {
+            return purchases;
+        }
         const from = new Date(fromDate);
         const to = new Date(toDate);
         return purchases.filter((p) => {
@@ -113,16 +127,190 @@ const PurchasePage: React.FC = () => {
             const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
             return matchesDate && matchesStatus;
         });
-    }, [purchases, fromDate, toDate, statusFilter]);
+    }, [purchases, fromDate, toDate, statusFilter, isFiltered]);
 
     const totalLiters = filteredPurchases.reduce(
         (sum, p) => sum + p.lines.reduce((lineSum, l) => lineSum + (l.ltr || 0), 0),
         0
     );
 
+    const handleSearch = () => {
+        setIsFiltered(true);
+    };
+
+    const handleAccept = (id: number) => {
+        updatePurchaseStatus(id, 'Accepted');
+        setStatusFilter('Accepted');
+        setIsFiltered(true);
+    };
+
+    if (!showForm) {
+        return (
+            <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h2>Purchase List</h2>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        style={{
+                            padding: '10px 20px',
+                            background: 'linear-gradient(90deg, #1d4ed8, #0ea5e9)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 10,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        + Purchase Entry
+                    </button>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+                    <label>
+                        From Date
+                        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                    </label>
+                    <label>
+                        To Date
+                        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    </label>
+                    <label>
+                        Status
+                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
+                            <option value="All">All</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Accepted">Accepted</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                        <button
+                            onClick={handleSearch}
+                            style={{
+                                padding: '10px 20px',
+                                background: 'linear-gradient(90deg, #1d4ed8, #0ea5e9)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 10,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                height: 'fit-content'
+                            }}
+                        >
+                            Search
+                        </button>
+                        {isFiltered && (
+                            <button
+                                onClick={() => setIsFiltered(false)}
+                                style={{
+                                    padding: '10px 16px',
+                                    background: '#64748b',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 8,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    height: 'fit-content'
+                                }}
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                </div>
+                <p style={{ marginBottom: 8, fontWeight: 600 }}>TOTAL LITER: {formatNumber(totalLiters)}</p>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th>Invoice Date</th>
+                                <th>Invoice No</th>
+                                <th>Vendor Name</th>
+                                <th>KG</th>
+                                <th>Qty (LTR)</th>
+                                <th>FAT</th>
+                                <th>SNF</th>
+                                <th>CLR</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredPurchases.length === 0 ? (
+                                <tr>
+                                    <td colSpan={10} style={{ textAlign: 'center', padding: 20 }}>
+                                        No purchases found. Click "Purchase Entry" to add one.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredPurchases.map((p) => {
+                                    const vendor = vendors.find((v) => v.id === p.vendorId);
+                                    const totalKg = p.lines.reduce((sum, l) => sum + l.kgQty, 0);
+                                    const totalFat = p.lines[0]?.fat ?? 0;
+                                    const totalSnf = p.lines[0]?.snf ?? 0;
+                                    const totalClr = p.lines[0]?.clr ?? 0;
+                                    return (
+                                        <tr key={p.id}>
+                                            <td>{p.date}</td>
+                                            <td>{p.invoiceNo}</td>
+                                            <td>{vendor ? `${vendor.name} (${vendor.code})` : ''}</td>
+                                            <td>{formatNumber(totalKg)}</td>
+                                            <td>{summarizeLiters(p.lines)}</td>
+                                            <td>{formatNumber(totalFat)}</td>
+                                            <td>{formatNumber(totalSnf)}</td>
+                                            <td>{formatNumber(totalClr)}</td>
+                                            <td>{p.status}</td>
+                                            <td>
+                                                {p.status !== 'Accepted' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAccept(p.id)}
+                                                        style={{ marginRight: 6 }}
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                )}
+                                                <button type="button" style={{ marginLeft: 6 }}>
+                                                    Print
+                                                </button>
+                                                <button type="button" style={{ marginLeft: 6 }}>
+                                                    Share
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: 16 }}>
-            <h2>Purchase Entry</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2>Purchase Entry</h2>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setShowForm(false);
+                        setMessage('');
+                    }}
+                    style={{
+                        padding: '8px 16px',
+                        background: '#64748b',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                    }}
+                >
+                    ← Back to List
+                </button>
+            </div>
             <form onSubmit={handleSave}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                     <label>
@@ -146,40 +334,57 @@ const PurchasePage: React.FC = () => {
                         </select>
                     </label>
                     <label>
-                        Search Vendor
-                        <input
-                            aria-label="Search Vendor"
-                            placeholder="Search vendor code or name"
-                            value={searchVendor}
-                            onChange={(e) => setSearchVendor(e.target.value)}
-                        />
-                    </label>
-                    <label>
                         Purchase From*
-                        <select
+                        <input
                             aria-label="Purchase From"
-                            value={vendorId}
+                            list="vendor-list"
+                            placeholder="Type to search vendor..."
+                            value={searchVendor}
                             onChange={(e) => {
-                                const id = Number(e.target.value);
-                                setVendorId(id);
-                                const selected = vendors.find((v) => v.id === id);
-                                if (selected) setState(selected.state);
+                                setSearchVendor(e.target.value);
+                                const selected = vendors.find((v) => 
+                                    `${v.code} - ${v.name} (${v.state})` === e.target.value
+                                );
+                                if (selected) {
+                                    setVendorId(selected.id);
+                                    setState(selected.state);
+                                } else {
+                                    setVendorId('');
+                                }
                             }}
-                            required
-                        >
-                            <option value="">Select vendor</option>
-                            {filteredVendors.map((v) => (
-                                <option key={v.id} value={v.id}>{`${v.code} - ${v.name} (${v.state})`}</option>
+                            required={!vendorId}
+                        />
+                        <datalist id="vendor-list">
+                            {vendors.map((v) => (
+                                <option key={v.id} value={`${v.code} - ${v.name} (${v.state})`} />
                             ))}
-                        </select>
+                        </datalist>
                     </label>
                     <label>
                         Vehicle Number
                         <input
                             aria-label="Vehicle Number"
+                            list="vehicle-list"
+                            placeholder="Type to search vehicle..."
                             value={vehicleNumber}
-                            onChange={(e) => setVehicleNumber(e.target.value)}
+                            onChange={(e) => {
+                                setVehicleNumber(e.target.value);
+                                const selected = vehicles.find((v) => 
+                                    `${v.vehicleNumber} - ${v.driverName} (${v.transportCompany})` === e.target.value
+                                );
+                                if (selected) {
+                                    setDriverName(selected.driverName);
+                                    setDriverMobile(selected.driverMobile);
+                                } else {
+                                    // Allow manual entry
+                                }
+                            }}
                         />
+                        <datalist id="vehicle-list">
+                            {vehicles.map((v) => (
+                                <option key={v.id} value={`${v.vehicleNumber} - ${v.driverName} (${v.transportCompany})`} />
+                            ))}
+                        </datalist>
                     </label>
                     <label>
                         Driver Name
@@ -200,7 +405,7 @@ const PurchasePage: React.FC = () => {
                 </div>
 
                 <h3 style={{ marginTop: 16 }}>Milk Details</h3>
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ overflowX: 'auto', maxWidth: '100%', border: '1px solid #e5e7eb', borderRadius: 8 }}>
                     <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
@@ -229,6 +434,7 @@ const PurchasePage: React.FC = () => {
                                             aria-label="Compartment"
                                             value={line.compartment}
                                             onChange={(e) => handleLineChange(line.id, 'compartment', e.target.value)}
+                                            style={{ ...cellInputStyle, minWidth: 100 }}
                                         >
                                             {compartmentOptions.map((opt) => (
                                                 <option key={opt} value={opt}>
@@ -242,6 +448,7 @@ const PurchasePage: React.FC = () => {
                                             aria-label="Milk Type"
                                             value={line.milkTypeId}
                                             onChange={(e) => handleLineChange(line.id, 'milkTypeId', e.target.value)}
+                                            style={{ ...cellInputStyle, minWidth: 150 }}
                                         >
                                             {milkTypes.map((m) => (
                                                 <option key={m.id} value={m.id}>
@@ -268,6 +475,7 @@ const PurchasePage: React.FC = () => {
                                             step="0.01"
                                             value={line.fat}
                                             onChange={(e) => handleLineChange(line.id, 'fat', e.target.value)}
+                                            style={{ ...cellInputStyle, minWidth: 90 }}
                                         />
                                     </td>
                                     <td>
@@ -277,6 +485,7 @@ const PurchasePage: React.FC = () => {
                                             step="0.01"
                                             value={line.clr}
                                             onChange={(e) => handleLineChange(line.id, 'clr', e.target.value)}
+                                            style={{ ...cellInputStyle, minWidth: 90 }}
                                         />
                                     </td>
                                     <td>
@@ -286,7 +495,7 @@ const PurchasePage: React.FC = () => {
                                             step="0.01"
                                             value={line.snf}
                                             disabled
-                                            style={{ ...cellInputStyle, background: '#f0f0f0', cursor: 'not-allowed' }}
+                                            style={{ ...cellInputStyle, minWidth: 90, background: '#f0f0f0', cursor: 'not-allowed' }}
                                         />
                                     </td>
                                     <td>
@@ -296,6 +505,7 @@ const PurchasePage: React.FC = () => {
                                             step="0.01"
                                             value={line.temperature ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'temperature', e.target.value)}
+                                            style={{ ...cellInputStyle, minWidth: 90 }}
                                         />
                                     </td>
                                     <td>
@@ -386,86 +596,6 @@ const PurchasePage: React.FC = () => {
                 </button>
                 {message && <p style={{ color: 'green' }}>{message}</p>}
             </form>
-
-            <hr style={{ margin: '24px 0' }} />
-
-            <h3>Purchase List</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                <label>
-                    From Date
-                    <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                </label>
-                <label>
-                    To Date
-                    <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-                </label>
-                <label>
-                    Status
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
-                        <option value="All">All</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Accepted">Accepted</option>
-                        <option value="Rejected">Rejected</option>
-                    </select>
-                </label>
-            </div>
-            <p style={{ marginTop: 8 }}>TOTAL LITER: {formatNumber(totalLiters)}</p>
-            <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                        <tr>
-                            <th>Invoice Date</th>
-                            <th>Invoice No</th>
-                            <th>Vendor Name</th>
-                            <th>KG</th>
-                            <th>Qty (LTR)</th>
-                            <th>FAT</th>
-                            <th>SNF</th>
-                            <th>CLR</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredPurchases.map((p) => {
-                            const vendor = vendors.find((v) => v.id === p.vendorId);
-                            const totalKg = p.lines.reduce((sum, l) => sum + l.kgQty, 0);
-                            const totalFat = p.lines[0]?.fat ?? 0;
-                            const totalSnf = p.lines[0]?.snf ?? 0;
-                            const totalClr = p.lines[0]?.clr ?? 0;
-                            return (
-                                <tr key={p.id}>
-                                    <td>{p.date}</td>
-                                    <td>{p.invoiceNo}</td>
-                                    <td>{vendor ? `${vendor.name} (${vendor.code})` : ''}</td>
-                                    <td>{formatNumber(totalKg)}</td>
-                                    <td>{summarizeLiters(p.lines)}</td>
-                                    <td>{formatNumber(totalFat)}</td>
-                                    <td>{formatNumber(totalSnf)}</td>
-                                    <td>{formatNumber(totalClr)}</td>
-                                    <td>{p.status}</td>
-                                    <td>
-                                        {p.status !== 'Accepted' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => updatePurchaseStatus(p.id, 'Accepted')}
-                                            >
-                                                Accept
-                                            </button>
-                                        )}
-                                        <button type="button" style={{ marginLeft: 6 }}>
-                                            Print
-                                        </button>
-                                        <button type="button" style={{ marginLeft: 6 }}>
-                                            Share
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
         </div>
     );
 };

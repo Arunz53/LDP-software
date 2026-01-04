@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import logo from '../Images/logo.jpg';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -45,21 +46,16 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
                 overflowY: 'auto'
             }}>
                 <div style={{ padding: '24px 20px', borderBottom: '1px solid #e5e7eb' }}>
-                    <div style={{
-                        background: 'linear-gradient(135deg, #1d4ed8, #0ea5e9)',
-                        borderRadius: 12,
-                        width: 56,
-                        height: 56,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: 24,
-                        fontWeight: 700,
-                        marginBottom: 8
-                    }}>
-                        LD
-                    </div>
+                    <img 
+                        src={logo} 
+                        alt="Lakshmi Dairy" 
+                        style={{
+                            width: 80,
+                            height: 80,
+                            objectFit: 'contain',
+                            marginBottom: 12
+                        }}
+                    />
                     <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Lakshmi Dairy</div>
                     <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Management System</div>
                 </div>
