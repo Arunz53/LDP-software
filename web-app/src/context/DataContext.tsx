@@ -1,12 +1,17 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
+    Driver,
     MilkType,
     Purchase,
     PurchaseLine,
     StateCode,
+    TransportCompany,
     User,
     UserRole,
+    Vehicle,
+    VehicleCapacity,
     VehicleInfo,
+    VehicleNumber,
     Vendor,
 } from '../types';
 import { formatNumber } from '../utils/snf';
@@ -23,12 +28,36 @@ interface DataContextValue {
     addVendor: (vendor: Omit<Vendor, 'id'>) => void;
     milkTypes: MilkType[];
     addMilkType: (milk: Omit<MilkType, 'id'>) => void;
+    updateMilkType: (id: number, milk: Omit<MilkType, 'id'>) => void;
+    deleteMilkType: (id: number) => void;
     vehicles: VehicleInfo[];
     addVehicle: (vehicle: Omit<VehicleInfo, 'id'>) => void;
     purchases: Purchase[];
     addPurchase: (purchase: Omit<Purchase, 'id'>) => void;
     updatePurchaseStatus: (id: number, status: Purchase['status']) => void;
     nextVendorCode: () => string;
+    // New Master Tables
+    vehicleNumbers: VehicleNumber[];
+    addVehicleNumber: (vehicleNumber: Omit<VehicleNumber, 'id'>) => void;
+    updateVehicleNumber: (id: number, vehicleNumber: Omit<VehicleNumber, 'id'>) => void;
+    deleteVehicleNumber: (id: number) => void;
+    drivers: Driver[];
+    addDriver: (driver: Omit<Driver, 'id'>) => void;
+    updateDriver: (id: number, driver: Omit<Driver, 'id'>) => void;
+    deleteDriver: (id: number) => void;
+    vehicleCapacities: VehicleCapacity[];
+    addVehicleCapacity: (capacity: Omit<VehicleCapacity, 'id'>) => void;
+    updateVehicleCapacity: (id: number, capacity: Omit<VehicleCapacity, 'id'>) => void;
+    deleteVehicleCapacity: (id: number) => void;
+    transportCompanies: TransportCompany[];
+    addTransportCompany: (company: Omit<TransportCompany, 'id'>) => void;
+    updateTransportCompany: (id: number, company: Omit<TransportCompany, 'id'>) => void;
+    deleteTransportCompany: (id: number) => void;
+    vehicleMasters: Vehicle[];
+    addVehicleMaster: (vehicle: Omit<Vehicle, 'id'>) => void;
+    updateVehicleMaster: (id: number, vehicle: Omit<Vehicle, 'id'>) => void;
+    deleteVehicleMaster: (id: number) => void;
+    getVehicleInfo: (vehicleId: number) => VehicleInfo | null;
 }
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -67,6 +96,37 @@ const initialVehicles: VehicleInfo[] = [
     },
 ];
 
+const initialVehicleNumbers: VehicleNumber[] = [
+    { id: 1, number: 'TN38AB1234' },
+    { id: 2, number: 'TN38CD5678' },
+];
+
+const initialDrivers: Driver[] = [
+    { id: 1, name: 'Ravi', mobile: '9876543210' },
+    { id: 2, name: 'Kumar', mobile: '9876543211' },
+];
+
+const initialVehicleCapacities: VehicleCapacity[] = [
+    { id: 1, capacity: '5000 Liters' },
+    { id: 2, capacity: '7000 Liters' },
+    { id: 3, capacity: '10000 Liters' },
+];
+
+const initialTransportCompanies: TransportCompany[] = [
+    { id: 1, name: 'Lakshmi Logistics' },
+    { id: 2, name: 'Sri Transport' },
+];
+
+const initialVehicleMasters: Vehicle[] = [
+    {
+        id: 1,
+        vehicleNumberId: 1,
+        driverId: 1,
+        capacityId: 1,
+        transportCompanyId: 1,
+    },
+];
+
 let purchaseCounter = 1;
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -88,6 +148,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [purchases, setPurchases] = useState<Purchase[]>(() => {
         const stored = localStorage.getItem('ldp_purchases');
         return stored ? JSON.parse(stored) : [];
+    });
+    
+    // New Master Tables State
+    const [vehicleNumbers, setVehicleNumbers] = useState<VehicleNumber[]>(() => {
+        const stored = localStorage.getItem('ldp_vehicleNumbers');
+        return stored ? JSON.parse(stored) : initialVehicleNumbers;
+    });
+    const [drivers, setDrivers] = useState<Driver[]>(() => {
+        const stored = localStorage.getItem('ldp_drivers');
+        return stored ? JSON.parse(stored) : initialDrivers;
+    });
+    const [vehicleCapacities, setVehicleCapacities] = useState<VehicleCapacity[]>(() => {
+        const stored = localStorage.getItem('ldp_vehicleCapacities');
+        return stored ? JSON.parse(stored) : initialVehicleCapacities;
+    });
+    const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>(() => {
+        const stored = localStorage.getItem('ldp_transportCompanies');
+        return stored ? JSON.parse(stored) : initialTransportCompanies;
+    });
+    const [vehicleMasters, setVehicleMasters] = useState<Vehicle[]>(() => {
+        const stored = localStorage.getItem('ldp_vehicleMasters');
+        return stored ? JSON.parse(stored) : initialVehicleMasters;
     });
 
     useEffect(() => {
@@ -116,6 +198,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         localStorage.setItem('ldp_vehicles', JSON.stringify(vehicles));
     }, [vehicles]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_vehicleNumbers', JSON.stringify(vehicleNumbers));
+    }, [vehicleNumbers]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_drivers', JSON.stringify(drivers));
+    }, [drivers]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_vehicleCapacities', JSON.stringify(vehicleCapacities));
+    }, [vehicleCapacities]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_transportCompanies', JSON.stringify(transportCompanies));
+    }, [transportCompanies]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_vehicleMasters', JSON.stringify(vehicleMasters));
+    }, [vehicleMasters]);
 
     useEffect(() => {
         localStorage.setItem('ldp_purchases', JSON.stringify(purchases));
@@ -155,6 +257,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMilkTypes((prev) => [...prev, { ...milk, id: prev.length + 1 }]);
     };
 
+    const updateMilkType = (id: number, milk: Omit<MilkType, 'id'>) => {
+        setMilkTypes((prev) => prev.map((m) => (m.id === id ? { ...milk, id } : m)));
+    };
+
+    const deleteMilkType = (id: number) => {
+        setMilkTypes((prev) => prev.filter((m) => m.id !== id));
+    };
+
     const addVehicle = (vehicle: Omit<VehicleInfo, 'id'>) => {
         setVehicles((prev) => [...prev, { ...vehicle, id: prev.length + 1 }]);
     };
@@ -166,6 +276,91 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updatePurchaseStatus = (id: number, status: Purchase['status']) => {
         setPurchases((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+    };
+
+    // Vehicle Number Master CRUD
+    const addVehicleNumber = (vehicleNumber: Omit<VehicleNumber, 'id'>) => {
+        setVehicleNumbers((prev) => [...prev, { ...vehicleNumber, id: prev.length + 1 }]);
+    };
+
+    const updateVehicleNumber = (id: number, vehicleNumber: Omit<VehicleNumber, 'id'>) => {
+        setVehicleNumbers((prev) => prev.map((vn) => (vn.id === id ? { ...vehicleNumber, id } : vn)));
+    };
+
+    const deleteVehicleNumber = (id: number) => {
+        setVehicleNumbers((prev) => prev.filter((vn) => vn.id !== id));
+    };
+
+    // Driver Master CRUD
+    const addDriver = (driver: Omit<Driver, 'id'>) => {
+        setDrivers((prev) => [...prev, { ...driver, id: prev.length + 1 }]);
+    };
+
+    const updateDriver = (id: number, driver: Omit<Driver, 'id'>) => {
+        setDrivers((prev) => prev.map((d) => (d.id === id ? { ...driver, id } : d)));
+    };
+
+    const deleteDriver = (id: number) => {
+        setDrivers((prev) => prev.filter((d) => d.id !== id));
+    };
+
+    // Vehicle Capacity Master CRUD
+    const addVehicleCapacity = (capacity: Omit<VehicleCapacity, 'id'>) => {
+        setVehicleCapacities((prev) => [...prev, { ...capacity, id: prev.length + 1 }]);
+    };
+
+    const updateVehicleCapacity = (id: number, capacity: Omit<VehicleCapacity, 'id'>) => {
+        setVehicleCapacities((prev) => prev.map((vc) => (vc.id === id ? { ...capacity, id } : vc)));
+    };
+
+    const deleteVehicleCapacity = (id: number) => {
+        setVehicleCapacities((prev) => prev.filter((vc) => vc.id !== id));
+    };
+
+    // Transport Company Master CRUD
+    const addTransportCompany = (company: Omit<TransportCompany, 'id'>) => {
+        setTransportCompanies((prev) => [...prev, { ...company, id: prev.length + 1 }]);
+    };
+
+    const updateTransportCompany = (id: number, company: Omit<TransportCompany, 'id'>) => {
+        setTransportCompanies((prev) => prev.map((tc) => (tc.id === id ? { ...company, id } : tc)));
+    };
+
+    const deleteTransportCompany = (id: number) => {
+        setTransportCompanies((prev) => prev.filter((tc) => tc.id !== id));
+    };
+
+    // Vehicle Master CRUD
+    const addVehicleMaster = (vehicle: Omit<Vehicle, 'id'>) => {
+        setVehicleMasters((prev) => [...prev, { ...vehicle, id: prev.length + 1 }]);
+    };
+
+    const updateVehicleMaster = (id: number, vehicle: Omit<Vehicle, 'id'>) => {
+        setVehicleMasters((prev) => prev.map((v) => (v.id === id ? { ...vehicle, id } : v)));
+    };
+
+    const deleteVehicleMaster = (id: number) => {
+        setVehicleMasters((prev) => prev.filter((v) => v.id !== id));
+    };
+
+    // Helper function to get complete vehicle info
+    const getVehicleInfo = (vehicleId: number): VehicleInfo | null => {
+        const vehicle = vehicleMasters.find((v) => v.id === vehicleId);
+        if (!vehicle) return null;
+
+        const vehicleNumber = vehicleNumbers.find((vn) => vn.id === vehicle.vehicleNumberId);
+        const driver = drivers.find((d) => d.id === vehicle.driverId);
+        const capacity = vehicleCapacities.find((vc) => vc.id === vehicle.capacityId);
+        const transportCompany = transportCompanies.find((tc) => tc.id === vehicle.transportCompanyId);
+
+        return {
+            id: vehicle.id,
+            vehicleNumber: vehicleNumber?.number || '',
+            driverName: driver?.name || '',
+            driverMobile: driver?.mobile,
+            capacity: capacity?.capacity,
+            transportCompany: transportCompany?.name,
+        };
     };
 
     const value = useMemo(
@@ -181,14 +376,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             addVendor,
             milkTypes,
             addMilkType,
+            updateMilkType,
+            deleteMilkType,
             vehicles,
             addVehicle,
             purchases,
             addPurchase,
             updatePurchaseStatus,
             nextVendorCode,
+            vehicleNumbers,
+            addVehicleNumber,
+            updateVehicleNumber,
+            deleteVehicleNumber,
+            drivers,
+            addDriver,
+            updateDriver,
+            deleteDriver,
+            vehicleCapacities,
+            addVehicleCapacity,
+            updateVehicleCapacity,
+            deleteVehicleCapacity,
+            transportCompanies,
+            addTransportCompany,
+            updateTransportCompany,
+            deleteTransportCompany,
+            vehicleMasters,
+            addVehicleMaster,
+            updateVehicleMaster,
+            deleteVehicleMaster,
+            getVehicleInfo,
         }),
-        [currentUser, isBootstrapped, userRole, vendors, milkTypes, vehicles, purchases]
+        [currentUser, isBootstrapped, userRole, vendors, milkTypes, vehicles, purchases, 
+         vehicleNumbers, drivers, vehicleCapacities, transportCompanies, vehicleMasters]
     );
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

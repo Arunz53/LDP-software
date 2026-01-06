@@ -2,15 +2,19 @@ import React, { useMemo, useState } from 'react';
 import { useData, summarizeLiters, todayIso } from '../context/DataContext';
 import { computeSnf, formatNumber } from '../utils/snf';
 import { PurchaseLine, StateCode } from '../types';
+import { useHistory } from 'react-router-dom';
+import SearchableDropdown from '../components/SearchableDropdown';
 
 const compartmentOptions: PurchaseLine['compartment'][] = ['Front', 'Middle', 'Back', 'Average'];
 
 const cellInputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '8px 10px',
+    maxWidth: '80px',
+    padding: '6px 8px',
     border: '1px solid #d4d7dc',
     borderRadius: 6,
     boxSizing: 'border-box',
+    fontSize: '13px',
 };
 
 const emptyLine = (milkTypeId: number, compartment: PurchaseLine['compartment']): PurchaseLine => ({
@@ -25,12 +29,16 @@ const emptyLine = (milkTypeId: number, compartment: PurchaseLine['compartment'])
 });
 
 const PurchasePage: React.FC = () => {
-    const { vendors, milkTypes, addPurchase, purchases, updatePurchaseStatus, vehicles } = useData();
+    const { vendors, milkTypes, addPurchase, purchases, updatePurchaseStatus, vehicles, vehicleMasters, getVehicleInfo, vehicleNumbers, drivers } = useData();
+    const history = useHistory();
     const defaultState: StateCode = vendors[0]?.state || 'Tamil Nadu';
     const [showForm, setShowForm] = useState(false);
     const [purchaseDate, setPurchaseDate] = useState(todayIso());
+    const [city, setCity] = useState('');
     const [state, setState] = useState<StateCode>(defaultState);
     const [vendorId, setVendorId] = useState<number | ''>(vendors[0]?.id ?? '');
+    const [selectedVehicleId, setSelectedVehicleId] = useState<number | undefined>(undefined);
+    const [selectedDriverId, setSelectedDriverId] = useState<number | undefined>(undefined);
     const [vehicleNumber, setVehicleNumber] = useState('');
     const [driverName, setDriverName] = useState('');
     const [driverMobile, setDriverMobile] = useState('');
@@ -107,7 +115,10 @@ const PurchasePage: React.FC = () => {
         setShowForm(false);
         // Reset form
         setPurchaseDate(todayIso());
+        setCity('');
         setVendorId(vendors[0]?.id ?? '');
+        setSelectedVehicleId(undefined);
+        setSelectedDriverId(undefined);
         setVehicleNumber('');
         setDriverName('');
         setDriverMobile('');
@@ -165,7 +176,7 @@ const PurchasePage: React.FC = () => {
                     </button>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
                     <label>
                         From Date
                         <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -312,7 +323,8 @@ const PurchasePage: React.FC = () => {
                 </button>
             </div>
             <form onSubmit={handleSave}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                {/* Row 1 */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
                     <label>
                         Purchase Date*
                         <input
@@ -323,6 +335,18 @@ const PurchasePage: React.FC = () => {
                             required
                         />
                     </label>
+
+                    <label>
+                        Purchase From city
+                        <input
+                            aria-label="City"
+                            type="text"
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            placeholder="Enter city"
+                        />
+                    </label>
+
                     <label>
                         State*
                         <select value={state} onChange={(e) => setState(e.target.value as StateCode)}>
@@ -333,67 +357,7 @@ const PurchasePage: React.FC = () => {
                             ))}
                         </select>
                     </label>
-                    <label>
-                        Purchase From*
-                        <input
-                            aria-label="Purchase From"
-                            list="vendor-list"
-                            placeholder="Type to search vendor..."
-                            value={searchVendor}
-                            onChange={(e) => {
-                                setSearchVendor(e.target.value);
-                                const selected = vendors.find((v) => 
-                                    `${v.code} - ${v.name} (${v.state})` === e.target.value
-                                );
-                                if (selected) {
-                                    setVendorId(selected.id);
-                                    setState(selected.state);
-                                } else {
-                                    setVendorId('');
-                                }
-                            }}
-                            required={!vendorId}
-                        />
-                        <datalist id="vendor-list">
-                            {vendors.map((v) => (
-                                <option key={v.id} value={`${v.code} - ${v.name} (${v.state})`} />
-                            ))}
-                        </datalist>
-                    </label>
-                    <label>
-                        Vehicle Number
-                        <input
-                            aria-label="Vehicle Number"
-                            list="vehicle-list"
-                            placeholder="Type to search vehicle..."
-                            value={vehicleNumber}
-                            onChange={(e) => {
-                                setVehicleNumber(e.target.value);
-                                const selected = vehicles.find((v) => 
-                                    `${v.vehicleNumber} - ${v.driverName} (${v.transportCompany})` === e.target.value
-                                );
-                                if (selected) {
-                                    setDriverName(selected.driverName);
-                                    setDriverMobile(selected.driverMobile);
-                                } else {
-                                    // Allow manual entry
-                                }
-                            }}
-                        />
-                        <datalist id="vehicle-list">
-                            {vehicles.map((v) => (
-                                <option key={v.id} value={`${v.vehicleNumber} - ${v.driverName} (${v.transportCompany})`} />
-                            ))}
-                        </datalist>
-                    </label>
-                    <label>
-                        Driver Name
-                        <input
-                            aria-label="Driver Name"
-                            value={driverName}
-                            onChange={(e) => setDriverName(e.target.value)}
-                        />
-                    </label>
+
                     <label>
                         Mobile No
                         <input
@@ -404,37 +368,148 @@ const PurchasePage: React.FC = () => {
                     </label>
                 </div>
 
+                {/* Row 2 */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    <div>
+                        <SearchableDropdown
+                            label="Purchase From (Vendor) *"
+                            options={vendors.map((v) => ({ 
+                                id: v.id, 
+                                label: `${v.code} - ${v.name} (${v.state})` 
+                            }))}
+                            value={vendorId ? Number(vendorId) : undefined}
+                            onChange={(id: number) => {
+                                setVendorId(id);
+                                const vendor = vendors.find((v) => v.id === id);
+                                if (vendor) {
+                                    setState(vendor.state);
+                                    setCity(vendor.city);
+                                }
+                            }}
+                            placeholder="Search vendor..."
+                        />
+                        <button
+                            type="button"
+                            onClick={() => history.push('/vendors')}
+                            style={{
+                                marginTop: 6,
+                                padding: '6px 12px',
+                                background: '#10b981',
+                                fontSize: 12,
+                                width: '100%',
+                            }}
+                        >
+                            + Add New Vendor
+                        </button>
+                    </div>
+
+                    <div>
+                        <SearchableDropdown
+                            label="Driver Name"
+                            options={drivers.map((d) => ({ 
+                                id: d.id, 
+                                label: d.name 
+                            }))}
+                            value={selectedDriverId}
+                            onChange={(id: number) => {
+                                setSelectedDriverId(id);
+                                const driver = drivers.find((d) => d.id === id);
+                                if (driver) {
+                                    setDriverName(driver.name);
+                                    setDriverMobile(driver.mobile);
+                                }
+                            }}
+                            placeholder="Search driver..."
+                        />
+                        <button
+                            type="button"
+                            onClick={() => history.push('/vehicles?tab=drivers')}
+                            style={{
+                                marginTop: 6,
+                                padding: '6px 12px',
+                                background: '#10b981',
+                                fontSize: 12,
+                                width: '100%',
+                            }}
+                        >
+                            + Add New Driver
+                        </button>
+                    </div>
+
+                    <div>
+                        <SearchableDropdown
+                            label="Vehicle Number"
+                            options={vehicleMasters.map((vm) => {
+                                const info = getVehicleInfo(vm.id);
+                                return { 
+                                    id: vm.id, 
+                                    label: info?.vehicleNumber || '' 
+                                };
+                            })}
+                            value={selectedVehicleId}
+                            onChange={(id: number) => {
+                                setSelectedVehicleId(id);
+                                const info = getVehicleInfo(id);
+                                if (info) {
+                                    setVehicleNumber(info.vehicleNumber);
+                                    setDriverName(info.driverName);
+                                    setDriverMobile(info.driverMobile || '');
+                                    // Also set the driver if exists
+                                    const matchingDriver = drivers.find(d => d.name === info.driverName);
+                                    if (matchingDriver) {
+                                        setSelectedDriverId(matchingDriver.id);
+                                    }
+                                }
+                            }}
+                            placeholder="Search vehicle..."
+                        />
+                        <button
+                            type="button"
+                            onClick={() => history.push('/vehicles')}
+                            style={{
+                                marginTop: 6,
+                                padding: '6px 12px',
+                                background: '#10b981',
+                                fontSize: 12,
+                                width: '100%',
+                            }}
+                        >
+                            + Add New Vehicle
+                        </button>
+                    </div>
+                </div>
+
                 <h3 style={{ marginTop: 16 }}>Milk Details</h3>
                 <div style={{ overflowX: 'auto', maxWidth: '100%', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                    <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
+                    <table style={{ width: 'auto', minWidth: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
-                                <th>Compartment</th>
-                                <th>Milk Type</th>
-                                <th>KG-QTY</th>
-                                <th>LTR</th>
-                                <th>FAT</th>
-                                <th>CLR</th>
-                                <th>SNF</th>
-                                <th>Temp</th>
-                                <th>MBRT</th>
-                                <th>Acidity</th>
-                                <th>COB</th>
-                                <th>Alcohol</th>
-                                <th>Adulteration</th>
-                                <th>Seal No</th>
-                                <th></th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '90px' }}>Compartment</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '120px' }}>Milk Type</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '80px' }}>KG-QTY</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>LTR</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>FAT</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>CLR</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>SNF</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>Temp</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>MBRT</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>Acidity</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>COB</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>Alcohol</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '90px' }}>Adulteration</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}>Seal No</th>
+                                <th style={{ padding: '10px 8px', fontSize: '13px', minWidth: '70px' }}></th>
                             </tr>
                         </thead>
                         <tbody>
                             {lines.map((line, idx) => (
                                 <tr key={line.id}>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <select
                                             aria-label="Compartment"
                                             value={line.compartment}
                                             onChange={(e) => handleLineChange(line.id, 'compartment', e.target.value)}
-                                            style={{ ...cellInputStyle, minWidth: 100 }}
+                                            style={cellInputStyle}
                                         >
                                             {compartmentOptions.map((opt) => (
                                                 <option key={opt} value={opt}>
@@ -443,12 +518,12 @@ const PurchasePage: React.FC = () => {
                                             ))}
                                         </select>
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <select
                                             aria-label="Milk Type"
                                             value={line.milkTypeId}
                                             onChange={(e) => handleLineChange(line.id, 'milkTypeId', e.target.value)}
-                                            style={{ ...cellInputStyle, minWidth: 150 }}
+                                            style={cellInputStyle}
                                         >
                                             {milkTypes.map((m) => (
                                                 <option key={m.id} value={m.id}>
@@ -457,112 +532,118 @@ const PurchasePage: React.FC = () => {
                                             ))}
                                         </select>
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="KG Qty"
                                             type="number"
                                             step="0.01"
                                             value={line.kgQty}
                                             onChange={(e) => handleLineChange(line.id, 'kgQty', e.target.value)}
-                                            style={{ ...cellInputStyle, minWidth: 100 }}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>{formatNumber(line.ltr)}</td>
-                                    <td>
+                                    <td style={{ padding: '8px', fontSize: '13px' }}>{formatNumber(line.ltr)}</td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="FAT"
                                             type="number"
                                             step="0.01"
                                             value={line.fat}
                                             onChange={(e) => handleLineChange(line.id, 'fat', e.target.value)}
-                                            style={{ ...cellInputStyle, minWidth: 90 }}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="CLR"
                                             type="number"
                                             step="0.01"
                                             value={line.clr}
                                             onChange={(e) => handleLineChange(line.id, 'clr', e.target.value)}
-                                            style={{ ...cellInputStyle, minWidth: 90 }}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="SNF"
                                             type="number"
                                             step="0.01"
                                             value={line.snf}
                                             disabled
-                                            style={{ ...cellInputStyle, minWidth: 90, background: '#f0f0f0', cursor: 'not-allowed' }}
+                                            style={{ ...cellInputStyle, background: '#f0f0f0', cursor: 'not-allowed' }}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="Temperature"
                                             type="number"
                                             step="0.01"
                                             value={line.temperature ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'temperature', e.target.value)}
-                                            style={{ ...cellInputStyle, minWidth: 90 }}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="MBRT"
                                             type="number"
                                             step="0.01"
                                             value={line.mbrt ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'mbrt', e.target.value)}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="Acidity"
                                             type="number"
                                             step="0.01"
                                             value={line.acidity ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'acidity', e.target.value)}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="COB"
                                             type="number"
                                             step="0.01"
                                             value={line.cob ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'cob', e.target.value)}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="Alcohol"
                                             type="number"
                                             step="0.01"
                                             value={line.alcohol ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'alcohol', e.target.value)}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="Adulteration"
                                             type="number"
                                             step="0.01"
                                             value={line.adulteration ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'adulteration', e.target.value)}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         <input
                                             aria-label="Seal Number"
                                             type="number"
                                             step="0.01"
                                             value={line.sealNo ?? ''}
                                             onChange={(e) => handleLineChange(line.id, 'sealNo', e.target.value)}
+                                            style={cellInputStyle}
                                         />
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '8px' }}>
                                         {idx > 0 && (
                                             <button type="button" onClick={() => removeLine(line.id)}>
                                                 Remove

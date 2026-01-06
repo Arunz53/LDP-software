@@ -41,6 +41,38 @@ export interface MilkType {
     hsnCode?: string;
 }
 
+// Master table interfaces
+export interface VehicleNumber {
+    id: number;
+    number: string;
+}
+
+export interface Driver {
+    id: number;
+    name: string;
+    mobile: string;
+}
+
+export interface VehicleCapacity {
+    id: number;
+    capacity: string;
+}
+
+export interface TransportCompany {
+    id: number;
+    name: string;
+}
+
+// Updated Vehicle interface using master IDs
+export interface Vehicle {
+    id: number;
+    vehicleNumberId: number;
+    driverId: number;
+    capacityId: number;
+    transportCompanyId: number;
+}
+
+// Legacy interface for backward compatibility
 export interface VehicleInfo {
     id: number;
     vehicleNumber: string;
