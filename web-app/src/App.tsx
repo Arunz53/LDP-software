@@ -7,8 +7,8 @@ import LabReportForm from './components/LabReportForm';
 import TransportForm from './components/TransportForm';
 import AccountsForm from './components/AccountsForm';
 import VendorForm from './components/VendorForm';
-import MilkTypeForm from './components/MilkTypeForm';
-import VehicleForm from './components/VehicleForm';
+import MilkTypeMasterPage from './pages/MilkTypeMasterPage';
+import VehicleMasterPage from './pages/VehicleMasterPage';
 import PurchasePage from './pages/PurchasePage';
 import AppLayout from './components/AppLayout';
 import { DataProvider, useData } from './context/DataContext';
@@ -40,8 +40,8 @@ const App: React.FC = () => {
             <PrivateRoute path="/transport" component={TransportForm} />
             <PrivateRoute path="/accounts" component={AccountsForm} />
             <PrivateRoute path="/vendors" component={VendorForm} />
-            <PrivateRoute path="/milk-types" component={MilkTypeForm} />
-            <PrivateRoute path="/vehicles" component={VehicleForm} />
+            <PrivateRoute path="/milk-types" component={MilkTypeMasterPage} />
+            <PrivateRoute path="/vehicles" component={VehicleMasterPage} />
             <PrivateRoute path="/purchase" component={PurchasePage} />
           </Switch>
         </AppLayout>
