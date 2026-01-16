@@ -38,6 +38,9 @@ interface DataContextValue {
     purchases: Purchase[];
     addPurchase: (purchase: Omit<Purchase, 'id'>) => void;
     updatePurchaseStatus: (id: number, status: Purchase['status']) => void;
+    sales: Purchase[];
+    addSales: (sales: Omit<Purchase, 'id'>) => void;
+    updateSalesStatus: (id: number, status: Purchase['status']) => void;
     nextVendorCode: () => string;
     // New Master Tables
     vehicleNumbers: VehicleNumber[];
@@ -131,6 +134,7 @@ const initialVehicleMasters: Vehicle[] = [
 ];
 
 let purchaseCounter = 1;
+let salesCounter = 1;
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | undefined>(undefined);
@@ -154,6 +158,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const maxId = parsed.reduce((max, p) => (p.id && p.id > max ? p.id : max), 0);
         // Keep the purchase id counter in sync with stored data to avoid id collisions after reloads
         purchaseCounter = Math.max(purchaseCounter, maxId + 1);
+        return parsed;
+    });
+
+    const [sales, setSales] = useState<Purchase[]>(() => {
+        const stored = localStorage.getItem('ldp_sales');
+        const parsed: Purchase[] = stored ? JSON.parse(stored) : [];
+        const maxId = parsed.reduce((max, p) => (p.id && p.id > max ? p.id : max), 0);
+        // Keep the sales id counter in sync with stored data to avoid id collisions after reloads
+        salesCounter = Math.max(salesCounter, maxId + 1);
         return parsed;
     });
     
@@ -217,6 +230,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         localStorage.setItem('ldp_vehicleCapacities', JSON.stringify(vehicleCapacities));
     }, [vehicleCapacities]);
+
+    useEffect(() => {
+        localStorage.setItem('ldp_sales', JSON.stringify(sales));
+    }, [sales]);
 
     useEffect(() => {
         localStorage.setItem('ldp_transportCompanies', JSON.stringify(transportCompanies));
@@ -284,8 +301,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMilkTypes((prev) => prev.filter((m) => m.id !== id));
     };
 
-    const addVehicle = (vehicle: Omit<VehicleInfo, 'id'>) => {
-        setVehicles((prev) => [...prev, { ...vehicle, id: prev.length + 1 }]);
+    const addSales = (salesData: Omit<Purchase, 'id'>) => {
+        const id = salesCounter++;
+        setSales((prev) => [...prev, { ...salesData, id }]);
+    };
+
+    const updateSalesStatus = (id: number, status: Purchase['status']) => {
+        setSales((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
     };
 
     const addPurchase = (purchase: Omit<Purchase, 'id'>) => {
@@ -295,6 +317,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updatePurchaseStatus = (id: number, status: Purchase['status']) => {
         setPurchases((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+    };
+
+    const addVehicle = (vehicle: Omit<VehicleInfo, 'id'>) => {
+        setVehicles((prev) => [...prev, { ...vehicle, id: prev.length + 1 }]);
     };
 
     // Vehicle Number Master CRUD
@@ -405,6 +431,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             purchases,
             addPurchase,
             updatePurchaseStatus,
+            sales,
+            addSales,
+            updateSalesStatus,
             nextVendorCode,
             vehicleNumbers,
             addVehicleNumber,
@@ -428,7 +457,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             deleteVehicleMaster,
             getVehicleInfo,
         }),
-        [currentUser, isBootstrapped, userRole, vendors, milkTypes, vehicles, purchases, 
+        [currentUser, isBootstrapped, userRole, vendors, milkTypes, vehicles, purchases, sales,
          vehicleNumbers, drivers, vehicleCapacities, transportCompanies, vehicleMasters]
     );
 

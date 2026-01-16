@@ -10,6 +10,7 @@ import VendorForm from './components/VendorForm';
 import MilkTypeMasterPage from './pages/MilkTypeMasterPage';
 import VehicleMasterPage from './pages/VehicleMasterPage';
 import PurchasePage from './pages/PurchasePage';
+import SalesPage from './pages/SalesPage';
 import AppLayout from './components/AppLayout';
 import { DataProvider, useData } from './context/DataContext';
 
@@ -43,6 +44,7 @@ const App: React.FC = () => {
             <PrivateRoute path="/milk-types" component={MilkTypeMasterPage} />
             <PrivateRoute path="/vehicles" component={VehicleMasterPage} />
             <PrivateRoute path="/purchase" component={PurchasePage} />
+            <PrivateRoute path="/sales" component={SalesPage} />
           </Switch>
         </AppLayout>
       </Router>
