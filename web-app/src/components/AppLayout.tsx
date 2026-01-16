@@ -67,6 +67,7 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
                     {sidebarLinks.map((link) => {
                         const isActive = location.pathname === link.path;
                         return (
+
                             <Link
                                 key={link.path}
                                 to={link.path}

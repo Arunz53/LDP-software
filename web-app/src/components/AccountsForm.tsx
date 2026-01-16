@@ -43,7 +43,7 @@ const AccountsForm: React.FC = () => {
                     onChange={(e) => setAccountType(e.target.value)}
                     required
                 >
-                    <option value="">Select Account Type</option>
+                    <option value="">Select Account Type</option>public_html
                     <option value="savings">Savings</option>
                     <option value="current">Current</option>
                     <option value="fixed">Fixed</option>
