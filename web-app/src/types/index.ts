@@ -33,6 +33,7 @@ export interface Vendor {
     pinCode?: string;
     city: string;
     address?: string;
+    isDeleted?: boolean;
 }
 
 export interface MilkType {

@@ -26,6 +26,9 @@ interface DataContextValue {
     logout: () => void;
     vendors: Vendor[];
     addVendor: (vendor: Omit<Vendor, 'id'>) => void;
+    updateVendor: (id: number, vendor: Omit<Vendor, 'id'>) => void;
+    softDeleteVendor: (id: number) => void;
+    restoreVendor: (id: number) => void;
     milkTypes: MilkType[];
     addMilkType: (milk: Omit<MilkType, 'id'>) => void;
     updateMilkType: (id: number, milk: Omit<MilkType, 'id'>) => void;
@@ -147,7 +150,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     const [purchases, setPurchases] = useState<Purchase[]>(() => {
         const stored = localStorage.getItem('ldp_purchases');
-        return stored ? JSON.parse(stored) : [];
+        const parsed: Purchase[] = stored ? JSON.parse(stored) : [];
+        const maxId = parsed.reduce((max, p) => (p.id && p.id > max ? p.id : max), 0);
+        // Keep the purchase id counter in sync with stored data to avoid id collisions after reloads
+        purchaseCounter = Math.max(purchaseCounter, maxId + 1);
+        return parsed;
     });
     
     // New Master Tables State
@@ -250,7 +257,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const addVendor = (vendor: Omit<Vendor, 'id'>) => {
-        setVendors((prev) => [...prev, { ...vendor, id: prev.length + 1 }]);
+        setVendors((prev) => [...prev, { ...vendor, id: prev.length + 1, isDeleted: false }]);
+    };
+
+    const updateVendor = (id: number, vendor: Omit<Vendor, 'id'>) => {
+        setVendors((prev) => prev.map((v) => (v.id === id ? { ...vendor, id, isDeleted: v.isDeleted } : v)));
+    };
+
+    const softDeleteVendor = (id: number) => {
+        setVendors((prev) => prev.map((v) => (v.id === id ? { ...v, isDeleted: true } : v)));
+    };
+
+    const restoreVendor = (id: number) => {
+        setVendors((prev) => prev.map((v) => (v.id === id ? { ...v, isDeleted: false } : v)));
     };
 
     const addMilkType = (milk: Omit<MilkType, 'id'>) => {
@@ -374,6 +393,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             logout,
             vendors,
             addVendor,
+            updateVendor,
+            softDeleteVendor,
+            restoreVendor,
             milkTypes,
             addMilkType,
             updateMilkType,
