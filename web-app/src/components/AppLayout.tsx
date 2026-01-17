@@ -22,11 +22,13 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
         { path: '/milk-types', icon: '🥛', label: 'Milk Type Master' },
         { path: '/vehicles', icon: '🚛', label: 'Vehicle Master' },
         { path: '/purchase', icon: '📦', label: 'Purchase Entry' },
+        { path: '/sales', icon: '💰', label: 'Sales Entry' },
     ];
 
     const topNavLinks = [
         { path: '/dashboard', label: 'Dashboard' },
         { path: '/purchase', label: 'Purchase' },
+        { path: '/sales', label: 'Sales' },
         { path: '/reports', label: 'Reports' },
         { path: '/accounts', label: 'Accounts' },
         { path: '/transport', label: 'Transport' },

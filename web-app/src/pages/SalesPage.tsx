@@ -28,8 +28,8 @@ const emptyLine = (milkTypeId: number, compartment: PurchaseLine['compartment'])
     snf: 0,
 });
 
-const PurchasePage: React.FC = () => {
-    const { vendors, milkTypes, addPurchase, purchases, updatePurchaseStatus, vehicles, vehicleMasters, getVehicleInfo, vehicleNumbers, drivers } = useData();
+const SalesPage: React.FC = () => {
+    const { vendors, milkTypes, addSales, sales, updateSalesStatus, vehicles, vehicleMasters, getVehicleInfo, vehicleNumbers, drivers } = useData();
     const history = useHistory();
     const defaultState: StateCode = vendors[0]?.state || 'Tamil Nadu';
     const [showForm, setShowForm] = useState(false);
@@ -74,8 +74,16 @@ const PurchasePage: React.FC = () => {
                     const numeric = Number(value);
                     (updated as any)[key] = numeric;
                 }
-                if (key === 'kgQty') {
-                    updated.ltr = Number((Number(value) / 1.03 || 0).toFixed(2));
+                // Sales calculation: Liter = KG / (1.0 + CLR/1000)
+                if (key === 'kgQty' || key === 'clr') {
+                    const kgQty = key === 'kgQty' ? Number(value) : updated.kgQty;
+                    const clr = key === 'clr' ? Number(value) : updated.clr;
+                    if (kgQty > 0 && clr > 0) {
+                        const density = 1.0 + (clr / 1000);
+                        updated.ltr = Number((kgQty / density).toFixed(2));
+                    } else {
+                        updated.ltr = 0;
+                    }
                 }
                 if (key === 'fat' || key === 'clr' || key === 'kgQty' || key === 'compartment' || key === 'milkTypeId') {
                     updated.snf = computeSnf(state, updated.clr, updated.fat);
@@ -97,11 +105,11 @@ const PurchasePage: React.FC = () => {
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         if (!purchaseDate || !state || !vendorId || lines.length === 0) {
-            setMessage('Fill date, state, vendor, and at least one compartment');
+            setMessage('Fill date, state, customer, and at least one compartment');
             return;
         }
-        const invoiceNo = `INV-${Date.now()}`;
-        addPurchase({
+        const invoiceNo = `SALES-${Date.now()}`;
+        addSales({
             invoiceNo,
             date: purchaseDate,
             vendorId: Number(vendorId),
@@ -112,7 +120,7 @@ const PurchasePage: React.FC = () => {
             status: 'Delivered',
             lines,
         });
-        setMessage(`Saved purchase ${invoiceNo}`);
+        setMessage(`Saved sales ${invoiceNo}`);
         setShowForm(false);
         // Reset form
         setPurchaseDate(todayIso());
@@ -127,8 +135,8 @@ const PurchasePage: React.FC = () => {
         setSearchVendor('');
     };
 
-    const filteredPurchases = useMemo(() => {
-        let result = [...purchases];
+    const filteredSales = useMemo(() => {
+        let result = [...sales];
         
         // Apply date filtering only if isFiltered is true
         if (isFiltered && fromDate && toDate) {
@@ -156,9 +164,9 @@ const PurchasePage: React.FC = () => {
             if (diff !== 0) return diff;
             return (b.id || 0) - (a.id || 0);
         });
-    }, [purchases, isFiltered, fromDate, toDate, vendorSearchFilter, vendors]);
+    }, [sales, isFiltered, fromDate, toDate, vendorSearchFilter, vendors]);
 
-    const totalLiters = filteredPurchases.reduce(
+    const totalLiters = filteredSales.reduce(
         (sum, p) => sum + p.lines.reduce((lineSum, l) => lineSum + (l.ltr || 0), 0),
         0
     );
@@ -168,14 +176,14 @@ const PurchasePage: React.FC = () => {
     };
 
     const handleAccept = (id: number) => {
-        updatePurchaseStatus(id, 'Accepted');
+        updateSalesStatus(id, 'Accepted');
     };
 
     if (!showForm) {
         return (
             <div style={{ padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <h2>Purchase List</h2>
+                    <h2>Sales List</h2>
                     <button
                         onClick={() => setShowForm(true)}
                         style={{
@@ -188,15 +196,12 @@ const PurchasePage: React.FC = () => {
                             cursor: 'pointer'
                         }}
                     >
-                        + Purchase Entry
+                        + Sales Entry
                     </button>
                 </div>
                 
-                <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Recent Purchases</h3>
+                <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Recent Sales</h3>
                 <p style={{ marginBottom: 8, fontWeight: 600 }}>TOTAL LITER: {formatNumber(totalLiters)}</p>
-                <p style={{ padding: 12, background: '#f8fafc', borderRadius: 8, color: '#475569' }}>
-                    Purchases will appear here after you save them.
-                </p>
                 
                 {/* Filter Section */}
                 <div style={{ 
@@ -362,14 +367,14 @@ const PurchasePage: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredPurchases.length === 0 ? (
+                            {filteredSales.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
-                                        No purchases yet
+                                        No sales yet
                                     </td>
                                 </tr>
                             ) : (
-                                filteredPurchases.map((p, index) => {
+                                filteredSales.map((p, index) => {
                                     const vendor = vendors.find((v) => v.id === p.vendorId);
                                     const totalKg = p.lines.reduce((sum, l) => sum + l.kgQty, 0);
                                     const totalLtr = p.lines.reduce((sum, l) => sum + l.ltr, 0);
@@ -436,7 +441,7 @@ const PurchasePage: React.FC = () => {
     return (
         <div style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h2>Purchase Entry</h2>
+                <h2>Sales Entry</h2>
                 <button
                     type="button"
                     onClick={() => {
@@ -460,9 +465,9 @@ const PurchasePage: React.FC = () => {
                 {/* Row 1 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
                     <label>
-                        Purchase Date*
+                        Sales Date*
                         <input
-                            aria-label="Purchase date"
+                            aria-label="Sales date"
                             type="date"
                             value={purchaseDate}
                             onChange={(e) => setPurchaseDate(e.target.value)}
@@ -471,7 +476,7 @@ const PurchasePage: React.FC = () => {
                     </label>
 
                     <label>
-                        Purchase From city
+                        Sales To city
                         <input
                             aria-label="City"
                             type="text"
@@ -506,7 +511,7 @@ const PurchasePage: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                     <div>
                         <SearchableDropdown
-                            label="Purchase From (Vendor) *"
+                            label="Sales To (Customer) *"
                             options={vendors.map((v) => ({ 
                                 id: v.id, 
                                 label: `${v.code} - ${v.name} (${v.state})` 
@@ -520,7 +525,7 @@ const PurchasePage: React.FC = () => {
                                     setCity(vendor.city);
                                 }
                             }}
-                            placeholder="Search vendor..."
+                            placeholder="Search customer..."
                         />
                         <button
                             type="button"
@@ -533,7 +538,7 @@ const PurchasePage: React.FC = () => {
                                 width: '100%',
                             }}
                         >
-                            + Add New Vendor
+                            + Add New Customer
                         </button>
                     </div>
 
@@ -801,7 +806,7 @@ const PurchasePage: React.FC = () => {
                 </div>
 
                 <button type="submit" style={{ marginTop: 12 }}>
-                    Save Purchase
+                    Save Sales
                 </button>
                 {message && <p style={{ color: 'green' }}>{message}</p>}
             </form>
@@ -809,4 +814,4 @@ const PurchasePage: React.FC = () => {
     );
 };
 
-export default PurchasePage;
+export default SalesPage;

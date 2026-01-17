@@ -10,6 +10,7 @@ import VendorForm from './components/VendorForm';
 import MilkTypeMasterPage from './pages/MilkTypeMasterPage';
 import VehicleMasterPage from './pages/VehicleMasterPage';
 import PurchasePage from './pages/PurchasePage';
+import SalesPage from './pages/SalesPage';
 import AppLayout from './components/AppLayout';
 import { DataProvider, useData } from './context/DataContext';
 
@@ -17,8 +18,25 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>; path: string
   component: Component,
   ...rest
 }) => {
-  const { isAuthenticated, isBootstrapped } = useData();
-  if (!isBootstrapped) return null;
+  const { isAuthenticated, isBootstrapped, isLoading } = useData();
+  
+  if (!isBootstrapped) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: '#f5f7fb'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 24, marginBottom: 10 }}>🔄</div>
+          <div style={{ fontSize: 16, color: '#64748b' }}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <Route
       {...rest}
@@ -43,6 +61,7 @@ const App: React.FC = () => {
             <PrivateRoute path="/milk-types" component={MilkTypeMasterPage} />
             <PrivateRoute path="/vehicles" component={VehicleMasterPage} />
             <PrivateRoute path="/purchase" component={PurchasePage} />
+            <PrivateRoute path="/sales" component={SalesPage} />
           </Switch>
         </AppLayout>
       </Router>
