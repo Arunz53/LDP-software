@@ -8,6 +8,7 @@ $conn = getDBConnection();
 if ($method === 'GET') {
     $stmt = $conn->query("SELECT * FROM vendors WHERE is_deleted = 0 ORDER BY code");
     $vendors = $stmt->fetchAll();
+    $vendors = array_map('snakeToCamel', $vendors);
     sendResponse($vendors);
 }
 
@@ -34,6 +35,7 @@ if ($method === 'POST') {
     $stmt = $conn->prepare("SELECT * FROM vendors WHERE id = ?");
     $stmt->execute([$id]);
     $vendor = $stmt->fetch();
+    $vendor = snakeToCamel($vendor);
     
     sendResponse($vendor, 201);
 }
@@ -66,6 +68,7 @@ if ($method === 'PUT') {
     $stmt = $conn->prepare("SELECT * FROM vendors WHERE id = ?");
     $stmt->execute([$id]);
     $vendor = $stmt->fetch();
+    $vendor = snakeToCamel($vendor);
     
     sendResponse($vendor);
 }

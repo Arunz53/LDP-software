@@ -13,6 +13,7 @@ if ($method === 'GET') {
         FROM sales s
         LEFT JOIN users u ON s.created_by = u.id
         LEFT JOIN vendors v ON s.vendor_id = v.id
+        WHERE s.is_deleted = FALSE
         ORDER BY s.date DESC, s.id DESC
     ");
     $sales = $stmt->fetchAll();
@@ -23,6 +24,9 @@ if ($method === 'GET') {
         $stmt->execute([$sale['id']]);
         $sale['lines'] = $stmt->fetchAll();
     }
+    
+    // Convert to camelCase
+    $sales = array_map('snakeToCamel', $sales);
     
     sendResponse($sales);
 }
@@ -91,6 +95,9 @@ if ($method === 'POST') {
         $stmt->execute([$salesId]);
         $sale['lines'] = $stmt->fetchAll();
         
+        // Convert to camelCase
+        $sale = snakeToCamel($sale);
+        
         sendResponse($sale, 201);
         
     } catch (Exception $e) {
@@ -114,6 +121,30 @@ if ($method === 'PUT') {
     $stmt->execute([$status, $id]);
     
     sendResponse(['message' => 'Sale status updated successfully']);
+}
+
+// DELETE - Soft delete sale
+if ($method === 'DELETE') {
+    $userId = requireAuth();
+    
+    $id = $_GET['id'] ?? null;
+    
+    if (!$id) {
+        sendError('Sale ID is required');
+    }
+    
+    try {
+        $stmt = $conn->prepare("
+            UPDATE sales 
+            SET is_deleted = TRUE, deleted_by = ?, deleted_at = NOW() 
+            WHERE id = ?
+        ");
+        $stmt->execute([$userId, $id]);
+        
+        sendResponse(['message' => 'Sale moved to recycle bin successfully']);
+    } catch (Exception $e) {
+        sendError('Failed to delete sale: ' . $e->getMessage(), 500);
+    }
 }
 
 sendError('Method not allowed', 405);

@@ -6,6 +6,7 @@ interface SearchableDropdownProps {
     onChange: (id: number) => void;
     placeholder?: string;
     label?: string;
+    fontSize?: number;
 }
 
 const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
@@ -14,6 +15,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     onChange,
     placeholder = 'Select...',
     label,
+    fontSize = 14,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -44,7 +46,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
     return (
         <div ref={wrapperRef} style={{ position: 'relative' }}>
-            {label && <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{label}</label>}
+            {label && <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize }}>{label}</label>}
             <div
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
@@ -58,7 +60,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                     alignItems: 'center',
                 }}
             >
-                <span style={{ color: selectedOption ? '#0f172a' : '#94a3b8' }}>
+                <span style={{ color: selectedOption ? '#0f172a' : '#94a3b8', fontSize }}>
                     {selectedOption?.label || placeholder}
                 </span>
                 <span style={{ fontSize: 12 }}>▼</span>

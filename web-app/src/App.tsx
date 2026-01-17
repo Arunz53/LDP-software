@@ -10,7 +10,9 @@ import VendorForm from './components/VendorForm';
 import MilkTypeMasterPage from './pages/MilkTypeMasterPage';
 import VehicleMasterPage from './pages/VehicleMasterPage';
 import PurchasePage from './pages/PurchasePage';
+import PurchaseReceivedPage from './pages/PurchaseReceivedPage';
 import SalesPage from './pages/SalesPage';
+import RecycleBin from './pages/RecycleBin';
 import AppLayout from './components/AppLayout';
 import { DataProvider, useData } from './context/DataContext';
 
@@ -60,8 +62,10 @@ const App: React.FC = () => {
             <PrivateRoute path="/vendors" component={VendorForm} />
             <PrivateRoute path="/milk-types" component={MilkTypeMasterPage} />
             <PrivateRoute path="/vehicles" component={VehicleMasterPage} />
+            <PrivateRoute path="/purchase-received/:id" component={PurchaseReceivedPage} />
             <PrivateRoute path="/purchase" component={PurchasePage} />
             <PrivateRoute path="/sales" component={SalesPage} />
+            <PrivateRoute path="/recycle-bin" component={RecycleBin} />
           </Switch>
         </AppLayout>
       </Router>

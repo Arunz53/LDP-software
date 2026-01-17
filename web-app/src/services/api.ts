@@ -118,6 +118,10 @@ export const purchasesAPI = {
     updateStatus(id: number, status: string) {
         return apiClient.put('purchases.php', { id, status });
     },
+
+    delete(id: number) {
+        return apiClient.delete(`purchases.php?id=${id}`);
+    },
 };
 
 // Sales API
@@ -132,6 +136,10 @@ export const salesAPI = {
 
     updateStatus(id: number, status: string) {
         return apiClient.put('sales.php', { id, status });
+    },
+
+    delete(id: number) {
+        return apiClient.delete(`sales.php?id=${id}`);
     },
 };
 
@@ -198,22 +206,38 @@ export const vehiclesAPI = {
     },
 
     deleteVehicleNumber(id: number) {
-        return apiClient.delete('vehicles.php/vehicle-numbers', { id });
+        return apiClient.delete(`vehicles.php/vehicle-numbers?id=${id}`);
     },
 
     deleteDriver(id: number) {
-        return apiClient.delete('vehicles.php/drivers', { id });
+        return apiClient.delete(`vehicles.php/drivers?id=${id}`);
     },
 
     deleteCapacity(id: number) {
-        return apiClient.delete('vehicles.php/vehicle-capacities', { id });
+        return apiClient.delete(`vehicles.php/vehicle-capacities?id=${id}`);
     },
 
     deleteTransportCompany(id: number) {
-        return apiClient.delete('vehicles.php/transport-companies', { id });
+        return apiClient.delete(`vehicles.php/transport-companies?id=${id}`);
     },
 
     deleteVehicleMaster(id: number) {
-        return apiClient.delete('vehicles.php/vehicle-masters', { id });
+        return apiClient.delete(`vehicles.php/vehicle-masters?id=${id}`);
+    },
+};
+
+// Recycle Bin API
+export const recycleBinAPI = {
+    getAll(type?: 'purchases' | 'sales' | 'all') {
+        const typeParam = type ? `?type=${type}` : '';
+        return apiClient.get(`recyclebin.php${typeParam}`);
+    },
+
+    restore(id: number, type: 'purchase' | 'sale') {
+        return apiClient.post('recyclebin.php', { id, type });
+    },
+
+    permanentDelete(id: number, type: 'purchase' | 'sale') {
+        return apiClient.delete(`recyclebin.php?id=${id}&type=${type}`);
     },
 };

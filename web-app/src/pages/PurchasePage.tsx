@@ -29,7 +29,7 @@ const emptyLine = (milkTypeId: number, compartment: PurchaseLine['compartment'])
 });
 
 const PurchasePage: React.FC = () => {
-    const { vendors, milkTypes, addPurchase, purchases, updatePurchaseStatus, vehicles, vehicleMasters, getVehicleInfo, vehicleNumbers, drivers } = useData();
+    const { vendors, milkTypes, addPurchase, purchases, updatePurchaseStatus, deletePurchase, vehicles, vehicleMasters, getVehicleInfo, vehicleNumbers, drivers, currentUser, userRole } = useData();
     const history = useHistory();
     const defaultState: StateCode = vendors[0]?.state || 'Tamil Nadu';
     const [showForm, setShowForm] = useState(false);
@@ -94,37 +94,42 @@ const PurchasePage: React.FC = () => {
 
     const removeLine = (id: string) => setLines((prev) => prev.filter((l) => l.id !== id));
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!purchaseDate || !state || !vendorId || lines.length === 0) {
             setMessage('Fill date, state, vendor, and at least one compartment');
             return;
         }
         const invoiceNo = `INV-${Date.now()}`;
-        addPurchase({
-            invoiceNo,
-            date: purchaseDate,
-            vendorId: Number(vendorId),
-            state,
-            vehicleNumber,
-            driverName,
-            driverMobile,
-            status: 'Delivered',
-            lines,
-        });
-        setMessage(`Saved purchase ${invoiceNo}`);
-        setShowForm(false);
-        // Reset form
-        setPurchaseDate(todayIso());
-        setCity('');
-        setVendorId(vendors[0]?.id ?? '');
-        setSelectedVehicleId(undefined);
-        setSelectedDriverId(undefined);
-        setVehicleNumber('');
-        setDriverName('');
-        setDriverMobile('');
-        setLines([emptyLine(milkTypes[0]?.id || 1, 'Front')]);
-        setSearchVendor('');
+        try {
+            await addPurchase({
+                invoiceNo,
+                date: purchaseDate,
+                vendorId: Number(vendorId),
+                state,
+                vehicleNumber,
+                driverName,
+                driverMobile,
+                status: 'Delivered',
+                lines,
+            });
+            setMessage(`Saved purchase ${invoiceNo}`);
+            setShowForm(false);
+            // Reset form
+            setPurchaseDate(todayIso());
+            setCity('');
+            setVendorId(vendors[0]?.id ?? '');
+            setSelectedVehicleId(undefined);
+            setSelectedDriverId(undefined);
+            setVehicleNumber('');
+            setDriverName('');
+            setDriverMobile('');
+            setLines([emptyLine(milkTypes[0]?.id || 1, 'Front')]);
+            setSearchVendor('');
+        } catch (error) {
+            console.error('Failed to save purchase:', error);
+            setMessage('Failed to save purchase');
+        }
     };
 
     const filteredPurchases = useMemo(() => {
@@ -168,7 +173,20 @@ const PurchasePage: React.FC = () => {
     };
 
     const handleAccept = (id: number) => {
-        updatePurchaseStatus(id, 'Accepted');
+        history.push(`/purchase-received/${id}`);
+    };
+
+    const handleDelete = async (id: number) => {
+        if (window.confirm('Are you sure you want to delete this purchase? It will be moved to the Recycle Bin.')) {
+            try {
+                await deletePurchase(id);
+                setMessage('Purchase moved to Recycle Bin successfully');
+                setTimeout(() => setMessage(''), 3000);
+            } catch (error) {
+                console.error('Failed to delete purchase:', error);
+                setMessage('Failed to delete purchase');
+            }
+        }
     };
 
     if (!showForm) {
@@ -402,13 +420,15 @@ const PurchasePage: React.FC = () => {
                                                 {formatNumber(avgClr, 2)}
                                             </td>
                                             <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAccept(p.id)}
-                                                    style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                                >
-                                                    Accept
-                                                </button>
+                                                {userRole === 'data-entry' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAccept(p.id)}
+                                                        style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#64748b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
@@ -417,9 +437,16 @@ const PurchasePage: React.FC = () => {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    style={{ padding: '4px 8px', fontSize: 12, background: '#10b981', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                                    style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#10b981', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                                 >
                                                     Share
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDelete(p.id)}
+                                                    style={{ padding: '4px 8px', fontSize: 12, background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                                >
+                                                    Delete
                                                 </button>
                                             </td>
                                         </tr>

@@ -13,6 +13,7 @@ if ($method === 'GET') {
         FROM purchases p
         LEFT JOIN users u ON p.created_by = u.id
         LEFT JOIN vendors v ON p.vendor_id = v.id
+        WHERE p.is_deleted = FALSE
         ORDER BY p.date DESC, p.id DESC
     ");
     $purchases = $stmt->fetchAll();
@@ -23,6 +24,9 @@ if ($method === 'GET') {
         $stmt->execute([$purchase['id']]);
         $purchase['lines'] = $stmt->fetchAll();
     }
+    
+    // Convert to camelCase
+    $purchases = array_map('snakeToCamel', $purchases);
     
     sendResponse($purchases);
 }
@@ -91,6 +95,9 @@ if ($method === 'POST') {
         $stmt->execute([$purchaseId]);
         $purchase['lines'] = $stmt->fetchAll();
         
+        // Convert to camelCase
+        $purchase = snakeToCamel($purchase);
+        
         sendResponse($purchase, 201);
         
     } catch (Exception $e) {
@@ -114,6 +121,30 @@ if ($method === 'PUT') {
     $stmt->execute([$status, $id]);
     
     sendResponse(['message' => 'Purchase status updated successfully']);
+}
+
+// DELETE - Soft delete purchase
+if ($method === 'DELETE') {
+    $userId = requireAuth();
+    
+    $id = $_GET['id'] ?? null;
+    
+    if (!$id) {
+        sendError('Purchase ID is required');
+    }
+    
+    try {
+        $stmt = $conn->prepare("
+            UPDATE purchases 
+            SET is_deleted = TRUE, deleted_by = ?, deleted_at = NOW() 
+            WHERE id = ?
+        ");
+        $stmt->execute([$userId, $id]);
+        
+        sendResponse(['message' => 'Purchase moved to recycle bin successfully']);
+    } catch (Exception $e) {
+        sendError('Failed to delete purchase: ' . $e->getMessage(), 500);
+    }
 }
 
 sendError('Method not allowed', 405);

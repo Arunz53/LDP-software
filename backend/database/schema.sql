@@ -96,11 +96,15 @@ CREATE TABLE purchases (
     driver_name VARCHAR(100),
     driver_mobile VARCHAR(20),
     status ENUM('Delivered', 'Accepted', 'Rejected') DEFAULT 'Delivered',
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_by INT,
+    deleted_at TIMESTAMP NULL,
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id),
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
 );
 
 -- Purchase Lines Table
@@ -136,11 +140,15 @@ CREATE TABLE sales (
     driver_name VARCHAR(100),
     driver_mobile VARCHAR(20),
     status ENUM('Delivered', 'Accepted', 'Rejected') DEFAULT 'Delivered',
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_by INT,
+    deleted_at TIMESTAMP NULL,
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id),
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
 );
 
 -- Sales Lines Table
