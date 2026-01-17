@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LDP Software - API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #1d4ed8; }
+        .success { color: #10b981; font-weight: bold; font-size: 24px; }
+        .endpoint { background: #f8f9fa; padding: 15px; margin: 10px 0; border-left: 4px solid #1d4ed8; }
+        .endpoint-url { color: #0ea5e9; font-family: monospace; }
+        button { background: #1d4ed8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #1e40af; }
+        pre { background: #1e293b; color: #10b981; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ LDP Software Backend - API Test</h1>
+        <p class="success">🎉 Backend is working successfully!</p>
+        
+        <h2>Your XAMPP Configuration:</h2>
+        <ul>
+            <li><strong>Apache Port:</strong> 8080</li>
+            <li><strong>MySQL:</strong> Running</li>
+            <li><strong>Database:</strong> ldp_software</li>
+            <li><strong>PHP Version:</strong> <?php echo phpversion(); ?></li>
+        </ul>
+
+        <h2>Available API Endpoints:</h2>
+        
+        <div class="endpoint">
+            <h3>Vendors API</h3>
+            <div class="endpoint-url">http://localhost:8080/LDP%20software/LDP-Software/backend/api/vendors.php</div>
+            <button onclick="testEndpoint('vendors.php')">Test Vendors</button>
+        </div>
+
+        <div class="endpoint">
+            <h3>Milk Types API</h3>
+            <div class="endpoint-url">http://localhost:8080/LDP%20software/LDP-Software/backend/api/milktypes.php</div>
+            <button onclick="testEndpoint('milktypes.php')">Test Milk Types</button>
+        </div>
+
+        <div class="endpoint">
+            <h3>Purchases API</h3>
+            <div class="endpoint-url">http://localhost:8080/LDP%20software/LDP-Software/backend/api/purchases.php</div>
+            <button onclick="testEndpoint('purchases.php')">Test Purchases</button>
+        </div>
+
+        <div class="endpoint">
+            <h3>Sales API</h3>
+            <div class="endpoint-url">http://localhost:8080/LDP%20software/LDP-Software/backend/api/sales.php</div>
+            <button onclick="testEndpoint('sales.php')">Test Sales</button>
+        </div>
+
+        <h2>Test Result:</h2>
+        <pre id="result">Click a button above to test an endpoint...</pre>
+    </div>
+
+    <script>
+        async function testEndpoint(endpoint) {
+            const resultElement = document.getElementById('result');
+            resultElement.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch(`/LDP%20software/LDP-Software/backend/api/${endpoint}`);
+                const data = await response.json();
+                resultElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultElement.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

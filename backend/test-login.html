@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test - Login</title>
+    <style>
+        body { font-family: Arial; padding: 40px; background: #f5f5f5; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; }
+        button { background: #1d4ed8; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1e40af; }
+        #result { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 LDP Software - Login Test</h2>
+        
+        <label>Role:</label>
+        <select id="role">
+            <option value="lab-report">Lab Report</option>
+            <option value="data-entry">Data Entry</option>
+            <option value="transport">Transport</option>
+            <option value="accounts">Accounts</option>
+            <option value="super-admin">Super Admin</option>
+        </select>
+
+        <label>Username:</label>
+        <input type="text" id="username" placeholder="Enter username" value="lab">
+
+        <label>Password:</label>
+        <input type="password" id="password" placeholder="Enter password" value="lab123">
+
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="testVendors()" style="background: #10b981;">Test Vendors API</button>
+        <button onclick="testSales()" style="background: #8b5cf6;">Test Sales API</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/LDP%20software/LDP-Software/backend/api';
+
+        async function testLogin() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Testing login...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth.php?action=login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value,
+                        role: document.getElementById('role').value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<div class="success">✅ Login Success!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = `<div class="error">❌ Login Failed!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testVendors() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Testing vendors API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/vendors.php`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                result.innerHTML = `<div class="success">✅ Vendors API Success!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testSales() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Testing sales API...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/sales.php`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                result.innerHTML = `<div class="success">✅ Sales API Success!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

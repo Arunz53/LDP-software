@@ -18,8 +18,25 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>; path: string
   component: Component,
   ...rest
 }) => {
-  const { isAuthenticated, isBootstrapped } = useData();
-  if (!isBootstrapped) return null;
+  const { isAuthenticated, isBootstrapped, isLoading } = useData();
+  
+  if (!isBootstrapped) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: '#f5f7fb'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 24, marginBottom: 10 }}>🔄</div>
+          <div style={{ fontSize: 16, color: '#64748b' }}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <Route
       {...rest}

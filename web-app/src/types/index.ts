@@ -71,6 +71,12 @@ export interface Vehicle {
     driverId: number;
     capacityId: number;
     transportCompanyId: number;
+    // Optional fields from backend JOIN
+    vehicle_number?: string;
+    driver_name?: string;
+    driver_mobile?: string;
+    capacity?: string;
+    transport_company?: string;
 }
 
 // Legacy interface for backward compatibility

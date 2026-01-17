@@ -202,9 +202,6 @@ const SalesPage: React.FC = () => {
                 
                 <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Recent Sales</h3>
                 <p style={{ marginBottom: 8, fontWeight: 600 }}>TOTAL LITER: {formatNumber(totalLiters)}</p>
-                <p style={{ padding: 12, background: '#f8fafc', borderRadius: 8, color: '#475569' }}>
-                    Sales will appear here after you save them.
-                </p>
                 
                 {/* Filter Section */}
                 <div style={{ 

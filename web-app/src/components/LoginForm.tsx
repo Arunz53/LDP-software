@@ -8,7 +8,7 @@ const LoginForm: React.FC = () => {
     const { login } = useData();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<UserRole>('lab-report');
+    const [role, setRole] = useState<UserRole>('data-entry');
     const [error, setError] = useState('');
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -17,12 +17,16 @@ const LoginForm: React.FC = () => {
             setError('Username and password are required');
             return;
         }
+        if (!role) {
+            setError('Please select a role');
+            return;
+        }
         try {
-            await login(username, password);
+            await login(username, password, role);
             setError('');
             history.push('/dashboard');
         } catch (e) {
-            setError('Invalid username/email or password');
+            setError('Invalid username/email, password, or role mismatch');
         }
     };
 
