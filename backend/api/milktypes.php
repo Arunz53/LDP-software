@@ -8,6 +8,7 @@ $conn = getDBConnection();
 if ($method === 'GET') {
     $stmt = $conn->query("SELECT * FROM milk_types ORDER BY name");
     $milkTypes = $stmt->fetchAll();
+    $milkTypes = array_map('snakeToCamel', $milkTypes);
     sendResponse($milkTypes);
 }
 
@@ -26,6 +27,7 @@ if ($method === 'POST') {
     $stmt = $conn->prepare("SELECT * FROM milk_types WHERE id = ?");
     $stmt->execute([$id]);
     $milkType = $stmt->fetch();
+    $milkType = snakeToCamel($milkType);
     
     sendResponse($milkType, 201);
 }
@@ -50,6 +52,7 @@ if ($method === 'PUT') {
     $stmt = $conn->prepare("SELECT * FROM milk_types WHERE id = ?");
     $stmt->execute([$id]);
     $milkType = $stmt->fetch();
+    $milkType = snakeToCamel($milkType);
     
     sendResponse($milkType);
 }

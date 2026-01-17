@@ -23,6 +23,7 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
         { path: '/vehicles', icon: '🚛', label: 'Vehicle Master' },
         { path: '/purchase', icon: '📦', label: 'Purchase Entry' },
         { path: '/sales', icon: '💰', label: 'Sales Entry' },
+        { path: '/recycle-bin', icon: '🗑️', label: 'Recycle Bin' },
     ];
 
     const topNavLinks = [

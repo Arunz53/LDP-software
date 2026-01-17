@@ -39,9 +39,11 @@ interface DataContextValue {
     purchases: Purchase[];
     addPurchase: (purchase: Omit<Purchase, 'id'>) => Promise<void>;
     updatePurchaseStatus: (id: number, status: Purchase['status']) => Promise<void>;
+    deletePurchase: (id: number) => Promise<void>;
     sales: Purchase[];
     addSales: (sales: Omit<Purchase, 'id'>) => Promise<void>;
     updateSalesStatus: (id: number, status: Purchase['status']) => Promise<void>;
+    deleteSales: (id: number) => Promise<void>;
     nextVendorCode: () => string;
     refreshData: () => Promise<void>;
     vehicleNumbers: VehicleNumber[];
@@ -126,82 +128,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setVendors(vendorsData);
             setMilkTypes(milkTypesData);
-            
-            // Transform purchases from snake_case to camelCase
-            const transformedPurchases = purchasesData.map((p: any) => ({
-                id: p.id,
-                invoiceNo: p.invoice_no,
-                date: p.date,
-                vendorId: p.vendor_id,
-                state: p.state,
-                vehicleNumber: p.vehicle_number || '',
-                driverName: p.driver_name || '',
-                driverMobile: p.driver_mobile || '',
-                status: p.status,
-                lines: (p.lines || []).map((l: any) => ({
-                    id: l.id,
-                    compartment: l.compartment,
-                    milkTypeId: l.milk_type_id,
-                    kgQty: parseFloat(l.kg_qty) || 0,
-                    ltr: parseFloat(l.ltr) || 0,
-                    fat: parseFloat(l.fat) || 0,
-                    clr: parseFloat(l.clr) || 0,
-                    snf: parseFloat(l.snf) || 0
-                }))
-            }));
-            setPurchases(transformedPurchases);
-            
-            // Transform sales from snake_case to camelCase
-            const transformedSales = salesData.map((s: any) => ({
-                id: s.id,
-                invoiceNo: s.invoice_no,
-                date: s.date,
-                vendorId: s.vendor_id,
-                state: s.state,
-                vehicleNumber: s.vehicle_number || '',
-                driverName: s.driver_name || '',
-                driverMobile: s.driver_mobile || '',
-                status: s.status,
-                lines: (s.lines || []).map((l: any) => ({
-                    id: l.id,
-                    compartment: l.compartment,
-                    milkTypeId: l.milk_type_id,
-                    kgQty: parseFloat(l.kg_qty) || 0,
-                    ltr: parseFloat(l.ltr) || 0,
-                    fat: parseFloat(l.fat) || 0,
-                    clr: parseFloat(l.clr) || 0,
-                    snf: parseFloat(l.snf) || 0
-                }))
-            }));
-            setSales(transformedSales);
-            
+            setPurchases(purchasesData);
+            setSales(salesData);
             setVehicleNumbers(vehicleNumbersData);
             setDrivers(driversData);
             setVehicleCapacities(capacitiesData);
             setTransportCompanies(companiesData);
-            
-            // Transform backend response (snake_case) to frontend format (camelCase)
-            const transformedVehicleMasters = vehicleMastersData.map((vm: any) => ({
-                id: vm.id,
-                vehicleNumberId: vm.vehicle_number_id,
-                driverId: vm.driver_id,
-                capacityId: vm.capacity_id,
-                transportCompanyId: vm.transport_company_id,
-                vehicle_number: vm.vehicle_number,
-                driver_name: vm.driver_name,
-                driver_mobile: vm.driver_mobile,
-                capacity: vm.capacity,
-                transport_company: vm.transport_company
-            }));
-            setVehicleMasters(transformedVehicleMasters);
+            setVehicleMasters(vehicleMastersData);
             
             console.log('✅ Data loaded from API:', { 
                 vendors: vendorsData.length, 
                 purchases: purchasesData.length, 
                 sales: salesData.length,
                 vehicleNumbers: vehicleNumbersData.length,
-                vehicleMasters: transformedVehicleMasters.length
+                vehicleMasters: vehicleMastersData.length
             });
+            
+            if (purchasesData.length > 0) {
+                console.log('📦 Sample purchase data:', purchasesData[0]);
+            }
         } catch (error) {
             console.error('❌ Error loading data:', error);
         } finally {
@@ -303,13 +248,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Purchases
     const addPurchase = async (purchase: Omit<Purchase, 'id'>) => {
-        const newPurchase = await purchasesAPI.create(purchase);
-        setPurchases((prev) => [...prev, newPurchase]);
+        console.log('🔄 Saving purchase to API...', purchase);
+        try {
+            const newPurchase = await purchasesAPI.create(purchase);
+            console.log('✅ Purchase saved successfully:', newPurchase);
+            setPurchases((prev) => {
+                const updated = [...prev, newPurchase];
+                console.log('📊 Updated purchases state:', updated.length);
+                return updated;
+            });
+        } catch (error) {
+            console.error('❌ Failed to save purchase:', error);
+            throw error;
+        }
     };
 
     const updatePurchaseStatus = async (id: number, status: Purchase['status']) => {
         await purchasesAPI.updateStatus(id, status);
         setPurchases((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+    };
+
+    const deletePurchase = async (id: number) => {
+        await purchasesAPI.delete(id);
+        setPurchases((prev) => prev.filter((p) => p.id !== id));
     };
 
     // Sales
@@ -321,6 +282,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updateSalesStatus = async (id: number, status: Purchase['status']) => {
         await salesAPI.updateStatus(id, status);
         setSales((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+    };
+
+    const deleteSales = async (id: number) => {
+        await salesAPI.delete(id);
+        setSales((prev) => prev.filter((p) => p.id !== id));
     };
 
     // Vehicle Numbers
@@ -471,9 +437,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         purchases,
         addPurchase,
         updatePurchaseStatus,
+        deletePurchase,
         sales,
         addSales,
         updateSalesStatus,
+        deleteSales,
         nextVendorCode,
         refreshData,
         vehicleNumbers,

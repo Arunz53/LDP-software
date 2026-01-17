@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext';
 import { formatNumber } from '../utils/snf';
 
 const Dashboard: React.FC = () => {
-    const { vendors, purchases } = useData();
+    const { vendors, purchases, userRole } = useData();
     
     const totalLiters = purchases.reduce(
         (sum, p) => sum + p.lines.reduce((lineSum, l) => lineSum + (l.ltr || 0), 0),
@@ -14,12 +14,15 @@ const Dashboard: React.FC = () => {
     const pendingOrders = purchases.filter(p => p.status === 'Delivered').length;
     const totalRevenue = purchases.length * 8400; // Sample calculation
 
-    const stats = [
+    const allStats = [
         { label: 'MILK COLLECTED', value: `${formatNumber(totalLiters)} L`, subtext: 'Today', color: '#3b82f6' },
         { label: 'VENDORS', value: vendors.length, subtext: 'Active', color: '#10b981' },
         { label: 'ORDERS', value: pendingOrders, subtext: 'Pending', color: '#f59e0b' },
         { label: 'REVENUE', value: `₹${formatNumber(totalRevenue, 0)}`, subtext: 'This month', color: '#8b5cf6' }
     ];
+    
+    // Hide Revenue stat for Lab users
+    const stats = userRole === 'data-entry' ? allStats : allStats.filter(s => s.label !== 'REVENUE');
 
     const recentPurchases = purchases.slice(-5).reverse();
 
@@ -69,7 +72,9 @@ const Dashboard: React.FC = () => {
                                 <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Date</th>
                                 <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Vendor</th>
                                 <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Qty (L)</th>
-                                <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Amount</th>
+                                {userRole === 'data-entry' && (
+                                    <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Amount</th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
@@ -92,9 +97,11 @@ const Dashboard: React.FC = () => {
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', textAlign: 'right' }}>
                                                 {formatNumber(totalLtr)}
                                             </td>
-                                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>
-                                                ₹{formatNumber(totalLtr * 50, 0)}
-                                            </td>
+                                            {userRole === 'data-entry' && (
+                                                <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>
+                                                    ₹{formatNumber(totalLtr * 50, 0)}
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })

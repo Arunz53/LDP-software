@@ -52,6 +52,27 @@ function sendError($message, $statusCode = 400) {
     exit();
 }
 
+// Convert snake_case to camelCase
+function snakeToCamel($array) {
+    if (!is_array($array)) {
+        return $array;
+    }
+    
+    $result = [];
+    foreach ($array as $key => $value) {
+        // Convert snake_case to camelCase
+        $camelKey = lcfirst(str_replace('_', '', ucwords($key, '_')));
+        
+        // Recursively convert nested arrays
+        if (is_array($value)) {
+            $result[$camelKey] = array_map('snakeToCamel', $value);
+        } else {
+            $result[$camelKey] = $value;
+        }
+    }
+    return $result;
+}
+
 // Get JSON input
 function getJsonInput() {
     $input = json_decode(file_get_contents('php://input'), true);

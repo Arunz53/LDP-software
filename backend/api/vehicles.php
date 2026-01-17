@@ -8,7 +8,9 @@ $conn = getDBConnection();
 if (strpos($_SERVER['REQUEST_URI'], '/vehicle-numbers') !== false) {
     if ($method === 'GET') {
         $stmt = $conn->query("SELECT * FROM vehicle_numbers ORDER BY number");
-        sendResponse($stmt->fetchAll());
+        $data = $stmt->fetchAll();
+        $data = array_map('snakeToCamel', $data);
+        sendResponse($data);
     }
     if ($method === 'POST') {
         requireAuth();
@@ -38,7 +40,9 @@ if (strpos($_SERVER['REQUEST_URI'], '/vehicle-numbers') !== false) {
 if (strpos($_SERVER['REQUEST_URI'], '/drivers') !== false) {
     if ($method === 'GET') {
         $stmt = $conn->query("SELECT * FROM drivers ORDER BY name");
-        sendResponse($stmt->fetchAll());
+        $data = $stmt->fetchAll();
+        $data = array_map('snakeToCamel', $data);
+        sendResponse($data);
     }
     if ($method === 'POST') {
         requireAuth();
@@ -68,7 +72,9 @@ if (strpos($_SERVER['REQUEST_URI'], '/drivers') !== false) {
 if (strpos($_SERVER['REQUEST_URI'], '/vehicle-capacities') !== false) {
     if ($method === 'GET') {
         $stmt = $conn->query("SELECT * FROM vehicle_capacities ORDER BY capacity");
-        sendResponse($stmt->fetchAll());
+        $data = $stmt->fetchAll();
+        $data = array_map('snakeToCamel', $data);
+        sendResponse($data);
     }
     if ($method === 'POST') {
         requireAuth();
@@ -98,7 +104,9 @@ if (strpos($_SERVER['REQUEST_URI'], '/vehicle-capacities') !== false) {
 if (strpos($_SERVER['REQUEST_URI'], '/transport-companies') !== false) {
     if ($method === 'GET') {
         $stmt = $conn->query("SELECT * FROM transport_companies ORDER BY name");
-        sendResponse($stmt->fetchAll());
+        $data = $stmt->fetchAll();
+        $data = array_map('snakeToCamel', $data);
+        sendResponse($data);
     }
     if ($method === 'POST') {
         requireAuth();
@@ -141,7 +149,9 @@ if (strpos($_SERVER['REQUEST_URI'], '/vehicle-masters') !== false) {
             JOIN transport_companies tc ON vm.transport_company_id = tc.id
             ORDER BY vm.id DESC
         ");
-        sendResponse($stmt->fetchAll());
+        $data = $stmt->fetchAll();
+        $data = array_map('snakeToCamel', $data);
+        sendResponse($data);
     }
     if ($method === 'POST') {
         requireAuth();
