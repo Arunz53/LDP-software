@@ -12,6 +12,7 @@ import VehicleMasterPage from './pages/VehicleMasterPage';
 import PurchasePage from './pages/PurchasePage';
 import PurchaseReceivedPage from './pages/PurchaseReceivedPage';
 import SalesPage from './pages/SalesPage';
+import SalesReceivedPage from './pages/SalesReceivedPage';
 import RecycleBin from './pages/RecycleBin';
 import AppLayout from './components/AppLayout';
 import { DataProvider, useData } from './context/DataContext';
@@ -64,6 +65,7 @@ const App: React.FC = () => {
             <PrivateRoute path="/vehicles" component={VehicleMasterPage} />
             <PrivateRoute path="/purchase-received/:id" component={PurchaseReceivedPage} />
             <PrivateRoute path="/purchase" component={PurchasePage} />
+            <PrivateRoute path="/sales-received/:id" component={SalesReceivedPage} />
             <PrivateRoute path="/sales" component={SalesPage} />
             <PrivateRoute path="/recycle-bin" component={RecycleBin} />
           </Switch>

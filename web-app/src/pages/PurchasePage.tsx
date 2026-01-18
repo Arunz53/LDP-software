@@ -49,7 +49,7 @@ const PurchasePage: React.FC = () => {
     const [message, setMessage] = useState('');
     const [fromDate, setFromDate] = useState(todayIso());
     const [toDate, setToDate] = useState(todayIso());
-    const [statusFilter, setStatusFilter] = useState<'All' | 'Delivered' | 'Accepted' | 'Rejected'>('All');
+    const [statusFilter, setStatusFilter] = useState<'All' | 'Delivered' | 'Accepted' | 'Rejected'>('Delivered');
     const [isFiltered, setIsFiltered] = useState(false);
     const [vendorSearchFilter, setVendorSearchFilter] = useState('');
 
@@ -135,6 +135,11 @@ const PurchasePage: React.FC = () => {
     const filteredPurchases = useMemo(() => {
         let result = [...purchases];
         
+        // Apply status filtering (default is 'Delivered' to hide accepted purchases)
+        if (statusFilter !== 'All') {
+            result = result.filter((p) => p.status === statusFilter);
+        }
+        
         // Apply date filtering only if isFiltered is true
         if (isFiltered && fromDate && toDate) {
             result = result.filter((p) => {
@@ -161,7 +166,7 @@ const PurchasePage: React.FC = () => {
             if (diff !== 0) return diff;
             return (b.id || 0) - (a.id || 0);
         });
-    }, [purchases, isFiltered, fromDate, toDate, vendorSearchFilter, vendors]);
+    }, [purchases, statusFilter, isFiltered, fromDate, toDate, vendorSearchFilter, vendors]);
 
     const totalLiters = filteredPurchases.reduce(
         (sum, p) => sum + p.lines.reduce((lineSum, l) => lineSum + (l.ltr || 0), 0),
@@ -177,14 +182,14 @@ const PurchasePage: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (window.confirm('Are you sure you want to delete this purchase? It will be moved to the Recycle Bin.')) {
+        if (window.confirm('Are you sure you want to reject this purchase?')) {
             try {
-                await deletePurchase(id);
-                setMessage('Purchase moved to Recycle Bin successfully');
+                await updatePurchaseStatus(id, 'Rejected');
+                setMessage('Purchase rejected successfully');
                 setTimeout(() => setMessage(''), 3000);
             } catch (error) {
-                console.error('Failed to delete purchase:', error);
-                setMessage('Failed to delete purchase');
+                console.error('Failed to reject purchase:', error);
+                setMessage('Failed to reject purchase');
             }
         }
     };
@@ -279,6 +284,8 @@ const PurchasePage: React.FC = () => {
                                         type="radio"
                                         name="purchaseStatus"
                                         value="Delivered"
+                                        checked={statusFilter === 'Delivered'}
+                                        onChange={(e) => setStatusFilter('Delivered')}
                                         style={{ cursor: 'pointer' }}
                                     />
                                     <span style={{ fontSize: 13, color: '#475569' }}>Delivered</span>
@@ -288,6 +295,8 @@ const PurchasePage: React.FC = () => {
                                         type="radio"
                                         name="purchaseStatus"
                                         value="Accepted"
+                                        checked={statusFilter === 'Accepted'}
+                                        onChange={(e) => setStatusFilter('Accepted')}
                                         style={{ cursor: 'pointer' }}
                                     />
                                     <span style={{ fontSize: 13, color: '#475569' }}>Accepted</span>
@@ -297,6 +306,8 @@ const PurchasePage: React.FC = () => {
                                         type="radio"
                                         name="purchaseStatus"
                                         value="Rejected"
+                                        checked={statusFilter === 'Rejected'}
+                                        onChange={(e) => setStatusFilter('Rejected')}
                                         style={{ cursor: 'pointer' }}
                                     />
                                     <span style={{ fontSize: 13, color: '#475569' }}>Rejected</span>
@@ -331,6 +342,7 @@ const PurchasePage: React.FC = () => {
                                 setFromDate(todayIso());
                                 setToDate(todayIso());
                                 setVendorSearchFilter('');
+                                setStatusFilter('Delivered');
                             }}
                             style={{
                                 padding: '8px 20px',
@@ -346,7 +358,7 @@ const PurchasePage: React.FC = () => {
                         >
                             Clear Filter
                         </button>
-                        {(isFiltered || vendorSearchFilter.trim()) && (
+                        {(isFiltered || vendorSearchFilter.trim() || statusFilter !== 'Delivered') && (
                             <span style={{ 
                                 padding: '8px 12px', 
                                 background: '#dbeafe', 
