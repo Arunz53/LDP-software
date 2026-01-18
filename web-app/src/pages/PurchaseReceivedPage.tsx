@@ -48,12 +48,15 @@ const PurchaseReceivedPage: React.FC = () => {
     const [receivedLines, setReceivedLines] = useState<ReceivedLine[]>([]);
     
     // Billing information state
-    const [includeKmCharges, setIncludeKmCharges] = useState(false);
+    const [tdsAmount, setTdsAmount] = useState(0);
     const [fixedCost, setFixedCost] = useState(0);
-    const [kmCharges, setKmCharges] = useState(0);
+    const [kmCharges1, setKmCharges1] = useState(0);
+    const [kmCharges2, setKmCharges2] = useState(0);
+    const [kmCharges3, setKmCharges3] = useState(0);
     const [tollGateCharges, setTollGateCharges] = useState(0);
+    const [excludingKm, setExcludingKm] = useState(false);
     const [discount, setDiscount] = useState(0);
-    const [tdsPercent, setTdsPercent] = useState(0);
+    const [tdsDeduction, setTdsDeduction] = useState(0);
     const [message, setMessage] = useState('');
 
     useEffect(() => {
@@ -108,12 +111,22 @@ const PurchaseReceivedPage: React.FC = () => {
     } : { kgQty: 0, ltr: 0, fat: 0, snf: 0 };
     const receivedSolid = receivedTotals.fat + receivedTotals.snf;
 
+    // Auto-calculate Fixed when TS changes
+    useEffect(() => {
+        if (tdsAmount && tdsAmount > 0) {
+            const calculatedFixed = (receivedSolid * tdsAmount) / 100;
+            setFixedCost(Number(calculatedFixed.toFixed(3)));
+        }
+    }, [tdsAmount, receivedSolid]);
+
     // Calculate billing amounts
+    const totalLiter = receivedTotals.ltr;
+    const tsTotal = fixedCost * totalLiter; // Total TS amount = Fixed * Total Liters
+    const kmTotal = kmCharges1 * kmCharges3; // Total KM amount = KM × KM Price
+    const transportAmount = kmTotal + tollGateCharges; // Transport Amount = KM Total + Toll Gate
     const totalAmount = receivedLines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-    const transportAmount = fixedCost + (includeKmCharges ? kmCharges : 0) + tollGateCharges;
-    const grossAmount = totalAmount + transportAmount;
-    const tdsAmount = (grossAmount * tdsPercent) / 100;
-    const netAmount = grossAmount - discount - tdsAmount;
+    const grossAmount = totalAmount + tsTotal + (excludingKm ? 0 : transportAmount); // Subtract transport if excluding KM
+    const netAmount = grossAmount - discount - tdsDeduction;
 
     const handleDeliveryLineChange = (id: string, key: keyof PurchaseLine, value: string | number) => {
         setDeliveryLines(prev => 
@@ -705,140 +718,280 @@ const PurchaseReceivedPage: React.FC = () => {
 
                     {/* Billing Information - Right 50% */}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>
-                            💰 BILLING INFORMATION
-                        </h3>
-                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#ffffff', padding: 16, flex: 1 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
-                                {/* Bill Amount and Total LTR */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div>
-                                        <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>
-                                            Bill Amount
-                                        </label>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
-                                            ₹{formatNumber(totalAmount, 2)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>
-                                            Total LTR
-                                        </label>
-                                        <div style={{ fontSize: 18, fontWeight: 900, color: '#d946ef' }}>
-                                            {formatNumber(receivedTotals.ltr, 2)}
-                                        </div>
-                                    </div>
+                        <div style={{ 
+                            background: '#ffffff',
+                            padding: '6px',
+                            borderRadius: '8px',
+                            border: '2px solid #e5e7eb',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                        }}>
+                            {/* Header: Billing Information */}
+                            <div style={{ 
+                                textAlign: 'center', 
+                                marginBottom: 4, 
+                                paddingBottom: 3, 
+                                borderBottom: '2px solid #377df4' 
+                            }}>
+                                <h3 style={{ 
+                                    fontSize: 12, 
+                                    fontWeight: 700, 
+                                    color: '#377df4', 
+                                    margin: 0,
+                                    letterSpacing: 0.3
+                                }}>
+                                    BILLING INFORMATION
+                                </h3>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {/* 1st Row: Total LTR */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center' }}>
+                                    <div></div>
+                                    <label style={{ fontSize: 12, fontWeight: 700, color: '#377df4', textAlign: 'center' }}>Total LTR</label>
+                                    <input
+                                        type="text"
+                                        value={formatNumber(totalLiter, 2)}
+                                        readOnly
+                                        style={{ 
+                                            padding: '3px 8px', 
+                                            border: '2px solid #377df4', 
+                                            borderRadius: 4, 
+                                            fontSize: '13px',
+                                            fontWeight: 700,
+                                            textAlign: 'right',
+                                            background: '#ffffff',
+                                            color: '#377df4'
+                                        }}
+                                    />
                                 </div>
 
-                                {/* TS, Fixed, and result */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 80px 80px', gap: 8, alignItems: 'center' }}>
-                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>TS</label>
+                                {/* 2nd Row: TS and Fixed */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 60px 140px 140px', gap: 6, alignItems: 'center' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>TS</label>
                                     <input
                                         type="number"
                                         step="0.01"
-                                        value={tdsPercent}
-                                        onChange={(e) => setTdsPercent(Number(e.target.value))}
-                                        style={{ padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: '12px' }}
+                                        value={tdsAmount}
+                                        onChange={(e) => setTdsAmount(Number(e.target.value))}
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            textAlign: 'right'
+                                        }}
                                     />
-                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textAlign: 'right' }}>Fixed</label>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4', textAlign: 'right' }}>Fixed</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={fixedCost}
                                         onChange={(e) => setFixedCost(Number(e.target.value))}
-                                        style={{ padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: '12px', textAlign: 'right' }}
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            textAlign: 'right'
+                                        }}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={formatNumber(tsTotal, 2)}
+                                        readOnly
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            textAlign: 'right',
+                                            background: '#f9fafb'
+                                        }}
                                     />
                                 </div>
 
-                                {/* KM charges */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr', gap: 8, alignItems: 'center' }}>
-                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>KM</label>
+                                {/* 3rd Row: KM */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '60px 100px 80px 100px 1fr 140px', gap: 6, alignItems: 'center' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>KM</label>
                                     <input
                                         type="number"
                                         step="0.01"
-                                        value={kmCharges}
-                                        onChange={(e) => setKmCharges(Number(e.target.value))}
-                                        disabled={!includeKmCharges}
-                                        style={{ padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: '12px', opacity: includeKmCharges ? 1 : 0.5 }}
+                                        value={kmCharges1}
+                                        onChange={(e) => setKmCharges1(Number(e.target.value))}
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            textAlign: 'right'
+                                        }}
                                     />
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', textAlign: 'right' }}>
-                                        {formatNumber(includeKmCharges ? kmCharges : 0, 2)}
-                                    </div>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>KM Price</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={kmCharges3}
+                                        onChange={(e) => setKmCharges3(Number(e.target.value))}
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            textAlign: 'right'
+                                        }}
+                                    />
+                                    <div></div>
+                                    <input
+                                        type="text"
+                                        value={formatNumber(kmCharges1 * kmCharges3, 2)}
+                                        readOnly
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            textAlign: 'right',
+                                            background: '#f9fafb'
+                                        }}
+                                    />
                                 </div>
 
-                                {/* Toll Gate */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
-                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Toll Gate</label>
+                                {/* 4th Row: Toll Gate */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>Toll Gate</label>
+                                    <div></div>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={tollGateCharges}
                                         onChange={(e) => setTollGateCharges(Number(e.target.value))}
-                                        style={{ padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: '12px', textAlign: 'right' }}
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            textAlign: 'right'
+                                        }}
                                     />
                                 </div>
 
-                                {/* Transport Amount */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#0ea5e9' }}>Transport Amount</label>
-                                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0ea5e9', textAlign: 'right' }}>
-                                        {formatNumber(transportAmount, 2)}
-                                    </div>
+                                {/* 5th Row: Transport Amount */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>Transport Amount</label>
+                                    <div></div>
+                                    <input
+                                        type="text"
+                                        value={formatNumber(transportAmount, 2)}
+                                        readOnly
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            textAlign: 'right',
+                                            background: '#f9fafb',
+                                            color: '#64748b'
+                                        }}
+                                    />
                                 </div>
 
-                                {/* Excluding KM & Gross Amount */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'center' }}>
+                                {/* 6th Row: Excluding KM and Gross Amount */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center', paddingTop: 2, borderTop: '1px solid #e5e7eb' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <input
                                             type="checkbox"
-                                            checked={includeKmCharges}
-                                            onChange={(e) => setIncludeKmCharges(e.target.checked)}
+                                            id="excludingKmCheck"
+                                            checked={excludingKm}
+                                            onChange={(e) => setExcludingKm(e.target.checked)}
+                                            style={{ width: 16, height: 16 }}
                                         />
-                                        <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Excluding KM</label>
+                                        <label htmlFor="excludingKmCheck" style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>Excluding KM</label>
                                     </div>
-                                    <div>
-                                        <label style={{ fontSize: 11, fontWeight: 600, color: '#d946ef', display: 'block' }}>Gross Amount</label>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color: '#d946ef', textAlign: 'right' }}>
-                                            {formatNumber(grossAmount, 2)}
-                                        </div>
-                                    </div>
+                                    <label style={{ fontSize: 12, fontWeight: 700, color: '#e91e8c', textAlign: 'center' }}>Gross Amount</label>
+                                    <input
+                                        type="text"
+                                        value={formatNumber(grossAmount, 2)}
+                                        readOnly
+                                        style={{ 
+                                            padding: '3px 8px', 
+                                            border: '2px solid #e91e8c', 
+                                            borderRadius: 4, 
+                                            fontSize: '13px',
+                                            fontWeight: 700,
+                                            textAlign: 'right',
+                                            background: '#ffffff',
+                                            color: '#e91e8c'
+                                        }}
+                                    />
                                 </div>
 
-                                {/* Discount */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
-                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Discount</label>
+                                {/* 7th Row: Discount */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>Discount</label>
+                                    <div></div>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={discount}
                                         onChange={(e) => setDiscount(Number(e.target.value))}
-                                        style={{ padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: '12px', textAlign: 'right' }}
+                                        style={{ 
+                                            padding: '6px 10px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '13px',
+                                            textAlign: 'right'
+                                        }}
                                     />
                                 </div>
 
-                                {/* TDS */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
-                                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>TDS</label>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', textAlign: 'right' }}>
-                                        {formatNumber(tdsAmount, 2)}
-                                    </div>
+                                {/* 8th Row: TDS */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>TDS</label>
+                                    <div></div>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={tdsDeduction}
+                                        onChange={(e) => setTdsDeduction(Number(e.target.value))}
+                                        style={{ 
+                                            padding: '6px 10px', 
+                                            border: '1px solid #d1d5db', 
+                                            borderRadius: 4, 
+                                            fontSize: '13px',
+                                            textAlign: 'right'
+                                        }}
+                                    />
                                 </div>
 
-                                {/* Net Amount */}
-                                <div style={{ background: '#faf5ff', padding: 12, borderRadius: 8, border: '2px solid #d946ef', marginTop: 8 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 700, color: '#d946ef', display: 'block', marginBottom: 4 }}>
-                                        Net Amount
-                                    </label>
-                                    <div style={{ fontSize: 24, fontWeight: 900, color: '#d946ef' }}>
-                                        {formatNumber(netAmount, 2)}
-                                    </div>
+                                {/* 9th Row: Net Amount */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center', paddingTop: 2, borderTop: '1px solid #e5e7eb' }}>
+                                    <div></div>
+                                    <label style={{ fontSize: 12, fontWeight: 700, color: '#e91e8c', textAlign: 'center' }}>Net Amount</label>
+                                    <input
+                                        type="text"
+                                        value={formatNumber(netAmount, 2)}
+                                        readOnly
+                                        style={{ 
+                                            padding: '8px 12px', 
+                                            border: '2px solid #e91e8c', 
+                                            borderRadius: 4, 
+                                            fontSize: '16px',
+                                            fontWeight: 700,
+                                            textAlign: 'right',
+                                            background: '#ffffff',
+                                            color: '#e91e8c'
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Accept Button */}
+                {/* Accept Button */}                {/* Accept Button */}
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 16, borderTop: '2px solid #e5e7eb' }}>
                     <button
                         onClick={handleAccept}
