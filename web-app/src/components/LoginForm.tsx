@@ -8,7 +8,7 @@ const LoginForm: React.FC = () => {
     const { login } = useData();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<UserRole>('data-entry');
+    const [role, setRole] = useState<UserRole>('lab-report');
     const [error, setError] = useState('');
 
     const handleSubmit = async (event: React.FormEvent) => {
