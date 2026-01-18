@@ -92,7 +92,7 @@ const LoginForm: React.FC = () => {
                     <div style={{ fontSize: 12, letterSpacing: 1, color: '#2563eb' }}>LAKSHMI DAIRY</div>
                     <h2 style={{ margin: '4px 0 0', fontWeight: 800, letterSpacing: 0.5 }}>Login</h2>
                     <p style={{ margin: '6px 0 0', color: '#475569', fontSize: 13 }}>
-                        Sign in to continue to LDP Software
+                        Sign in to continue to LDP Softwares
                     </p>
                 </div>
                 <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>

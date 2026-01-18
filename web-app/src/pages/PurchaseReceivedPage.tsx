@@ -1013,7 +1013,7 @@ const PurchaseReceivedPage: React.FC = () => {
 
                 {message && (
                     <div style={{ 
-                        marginTop: 16, 
+                        marginTop: 16,  
                         padding: '12px 16px', 
                         background: message.includes('success') ? '#f0fdf4' : '#fef2f2',
                         color: message.includes('success') ? '#15803d' : '#b91c1c',
