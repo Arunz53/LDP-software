@@ -26,3 +26,8 @@ export const formatNumber = (value: number | undefined, decimals = 2): string =>
         maximumFractionDigits: decimals,
     });
 };
+export const formatVendorDisplay = (name: string | undefined, code: string | undefined): string => {
+    if (!name) return 'N/A';
+    if (code) return `${name} - ${code}`;
+    return name;
+};

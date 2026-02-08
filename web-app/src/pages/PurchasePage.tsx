@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useData, summarizeLiters, todayIso } from '../context/DataContext';
-import { computeSnf, formatNumber } from '../utils/snf';
-import { PurchaseLine, StateCode } from '../types';
+import { computeSnf, formatNumber, formatVendorDisplay } from '../utils/snf';
+import { Purchase, PurchaseLine, StateCode } from '../types';
 import { useHistory } from 'react-router-dom';
 import SearchableDropdown from '../components/SearchableDropdown';
+import PrintInvoice from '../components/PrintInvoice';
 
 const compartmentOptions: PurchaseLine['compartment'][] = ['Front', 'Middle', 'Back', 'Average'];
 
@@ -52,6 +53,7 @@ const PurchasePage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<'All' | 'Delivered' | 'Accepted' | 'Rejected'>('Delivered');
     const [isFiltered, setIsFiltered] = useState(false);
     const [vendorSearchFilter, setVendorSearchFilter] = useState('');
+    const [printingPurchase, setPrintingPurchase] = useState<Purchase | null>(null);
 
     const filteredVendors = useMemo(
         () =>
@@ -401,17 +403,17 @@ const PurchasePage: React.FC = () => {
                             ) : (
                                 filteredPurchases.map((p, index) => {
                                     const vendor = vendors.find((v) => v.id === p.vendorId);
-                                    const totalKg = p.lines.reduce((sum, l) => sum + l.kgQty, 0);
-                                    const totalLtr = p.lines.reduce((sum, l) => sum + l.ltr, 0);
-                                    const avgFat = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + l.fat, 0) / p.lines.length : 0;
-                                    const avgSnf = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + l.snf, 0) / p.lines.length : 0;
-                                    const avgClr = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + l.clr, 0) / p.lines.length : 0;
+                                    const totalKg = p.lines.reduce((sum, l) => sum + (parseFloat(String(l.kgQty)) || 0), 0);
+                                    const totalLtr = p.lines.reduce((sum, l) => sum + (parseFloat(String(l.ltr)) || 0), 0);
+                                    const avgFat = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0;
+                                    const avgSnf = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0;
+                                    const avgClr = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0;
                                     const formattedDate = new Date(p.date).toLocaleDateString('en-GB');
                                     return (
                                         <tr key={`${p.id}-${p.invoiceNo}-${index}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{formattedDate}</td>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
-                                                {vendor?.name || 'N/A'}
+                                                {formatVendorDisplay(vendor?.name, vendor?.code)}
                                             </td>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
                                                 {p.invoiceNo || 'N/A'}
@@ -443,6 +445,7 @@ const PurchasePage: React.FC = () => {
                                                 )}
                                                 <button
                                                     type="button"
+                                                    onClick={() => setPrintingPurchase(p)}
                                                     style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#64748b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                                 >
                                                     Print
@@ -466,13 +469,54 @@ const PurchasePage: React.FC = () => {
                                 })
                             )}
                         </tbody>
+                        <tfoot>
+                            {filteredPurchases.length > 0 && (
+                                <tr style={{ background: '#f8fafc', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                                    <td colSpan={3} style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a' }}>
+                                        TOTAL / AVERAGE
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.reduce((sum, p) => sum + (p.lines ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.kgQty)) || 0), 0) : 0), 0))}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.reduce((sum, p) => sum + (p.lines ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.ltr)) || 0), 0) : 0), 0))}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.length > 0 
+                                            ? filteredPurchases.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0), 0) / filteredPurchases.length
+                                            : 0, 2)}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.length > 0 
+                                            ? filteredPurchases.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0), 0) / filteredPurchases.length
+                                            : 0, 2)}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.length > 0 
+                                            ? filteredPurchases.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0), 0) / filteredPurchases.length
+                                            : 0, 2)}
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            )}
+                        </tfoot>
                     </table>
                 </div>
+
+                {/* Print Invoice Modal */}
+                {printingPurchase && (
+                    <PrintInvoice
+                        purchase={printingPurchase}
+                        vendor={vendors.find((v) => v.id === printingPurchase.vendorId)}
+                        type="purchase"
+                        onClose={() => setPrintingPurchase(null)}
+                    />
+                )}
             </div>
         );
     }
 
-    return (
+        return (
         <div style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h2>Purchase Entry</h2>
@@ -844,6 +888,16 @@ const PurchasePage: React.FC = () => {
                 </button>
                 {message && <p style={{ color: 'green' }}>{message}</p>}
             </form>
+
+            {/* Print Invoice Modal */}
+            {printingPurchase && (
+                <PrintInvoice
+                    purchase={printingPurchase}
+                    vendor={vendors.find((v) => v.id === printingPurchase.vendorId)}
+                    type="purchase"
+                    onClose={() => setPrintingPurchase(null)}
+                />
+            )}
         </div>
     );
 };

@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { formatNumber } from '../utils/snf';
+import { formatNumber, formatVendorDisplay } from '../utils/snf';
 
 const Dashboard: React.FC = () => {
     const { vendors, purchases, userRole } = useData();
     
     const totalLiters = purchases.reduce(
-        (sum, p) => sum + p.lines.reduce((lineSum, l) => lineSum + (l.ltr || 0), 0),
+        (sum, p) => sum + (p.lines ? p.lines.reduce((lineSum, l) => lineSum + (parseFloat(String(l.ltr)) || 0), 0) : 0),
         0
     );
     
@@ -87,12 +87,12 @@ const Dashboard: React.FC = () => {
                             ) : (
                                 recentPurchases.map((p) => {
                                     const vendor = vendors.find(v => v.id === p.vendorId);
-                                    const totalLtr = p.lines.reduce((sum, l) => sum + l.ltr, 0);
+                                    const totalLtr = p.lines.reduce((sum, l) => sum + (parseFloat(String(l.ltr)) || 0), 0);
                                     return (
                                         <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{p.date}</td>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
-                                                {vendor?.name || 'N/A'}
+                                                {formatVendorDisplay(vendor?.name, vendor?.code)}
                                             </td>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', textAlign: 'right' }}>
                                                 {formatNumber(totalLtr)}

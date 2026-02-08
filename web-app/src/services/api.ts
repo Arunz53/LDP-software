@@ -1,4 +1,4 @@
-// API Configuration
+// API Configuration (local dev)
 const API_BASE_URL = 'http://localhost:8080/LDP%20software/LDP-Software/backend/api';
 
 // API Client with credentials

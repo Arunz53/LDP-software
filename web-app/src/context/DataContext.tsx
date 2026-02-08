@@ -86,10 +86,33 @@ export const summarizeLiters = (purchases: Purchase[]): { [milkTypeId: number]: 
     const result: { [milkTypeId: number]: number } = {};
     purchases.forEach((p) => {
         p.lines.forEach((line) => {
-            result[line.milkTypeId] = (result[line.milkTypeId] || 0) + line.ltr;
+            result[line.milkTypeId] = (result[line.milkTypeId] || 0) + parseFloat(String(line.ltr)) || 0;
         });
     });
     return result;
+};
+
+// Normalize purchase data: convert string numeric fields to numbers
+const normalizePurchase = (purchase: any): Purchase => {
+    return {
+        ...purchase,
+        lines: purchase.lines ? purchase.lines.map((line: any) => ({
+            ...line,
+            milkTypeId: Number(line.milkTypeId) || 0,
+            kgQty: parseFloat(String(line.kgQty)) || 0,
+            ltr: parseFloat(String(line.ltr)) || 0,
+            fat: parseFloat(String(line.fat)) || 0,
+            clr: parseFloat(String(line.clr)) || 0,
+            snf: parseFloat(String(line.snf)) || 0,
+            temperature: line.temperature ? parseFloat(String(line.temperature)) : undefined,
+            mbrt: line.mbrt ? parseFloat(String(line.mbrt)) : undefined,
+            acidity: line.acidity ? parseFloat(String(line.acidity)) : undefined,
+            cob: line.cob ? parseFloat(String(line.cob)) : undefined,
+            alcohol: line.alcohol ? parseFloat(String(line.alcohol)) : undefined,
+            adulteration: line.adulteration ? parseFloat(String(line.adulteration)) : undefined,
+            sealNo: line.sealNo ? Number(line.sealNo) : undefined,
+        })) : [],
+    };
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -128,8 +151,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setVendors(vendorsData);
             setMilkTypes(milkTypesData);
-            setPurchases(purchasesData);
-            setSales(salesData);
+            setPurchases(purchasesData.map(normalizePurchase));
+            setSales(salesData.map(normalizePurchase));
             setVehicleNumbers(vehicleNumbersData);
             setDrivers(driversData);
             setVehicleCapacities(capacitiesData);
@@ -250,10 +273,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const addPurchase = async (purchase: Omit<Purchase, 'id'>) => {
         console.log('🔄 Saving purchase to API...', purchase);
         try {
-            const newPurchase = await purchasesAPI.create(purchase);
+            const purchaseWithUser = {
+                ...purchase,
+                createdBy: currentUser?.id
+            };
+            const newPurchase = await purchasesAPI.create(purchaseWithUser);
             console.log('✅ Purchase saved successfully:', newPurchase);
             setPurchases((prev) => {
-                const updated = [...prev, newPurchase];
+                const updated = [...prev, normalizePurchase(newPurchase)];
                 console.log('📊 Updated purchases state:', updated.length);
                 return updated;
             });
@@ -275,8 +302,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Sales
     const addSales = async (salesData: Omit<Purchase, 'id'>) => {
-        const newSale = await salesAPI.create(salesData);
-        setSales((prev) => [...prev, newSale]);
+        const salesWithUser = {
+            ...salesData,
+            createdBy: currentUser?.id
+        };
+        const newSale = await salesAPI.create(salesWithUser);
+        setSales((prev) => [...prev, normalizePurchase(newSale)]);
     };
 
     const updateSalesStatus = async (id: number, status: Purchase['status']) => {
