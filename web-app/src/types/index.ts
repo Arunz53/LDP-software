@@ -122,4 +122,8 @@ export interface Purchase {
     driverMobile?: string;
     status: PurchaseStatus;
     lines: PurchaseLine[];
+    createdBy?: number;
+    kmCharges1?: number;
+    kmCharges3?: number;
+    tollGateCharges?: number;
 }

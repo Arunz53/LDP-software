@@ -1,35 +1,46 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { formatNumber } from '../utils/snf';
+import { formatNumber, formatVendorDisplay } from '../utils/snf';
 
 const Dashboard: React.FC = () => {
-    const { vendors, purchases, userRole } = useData();
+    const { vendors, purchases, userRole, vehicleMasters, drivers, vehicleCapacities, transportCompanies, vehicleNumbers } = useData();
     
     const totalLiters = purchases.reduce(
-        (sum, p) => sum + p.lines.reduce((lineSum, l) => lineSum + (l.ltr || 0), 0),
+        (sum, p) => sum + (p.lines ? p.lines.reduce((lineSum, l) => lineSum + (parseFloat(String(l.ltr)) || 0), 0) : 0),
         0
     );
     
     const pendingOrders = purchases.filter(p => p.status === 'Delivered').length;
     const totalRevenue = purchases.length * 8400; // Sample calculation
 
-    const allStats = [
-        { label: 'MILK COLLECTED', value: `${formatNumber(totalLiters)} L`, subtext: 'Today', color: '#3b82f6' },
-        { label: 'VENDORS', value: vendors.length, subtext: 'Active', color: '#10b981' },
-        { label: 'ORDERS', value: pendingOrders, subtext: 'Pending', color: '#f59e0b' },
-        { label: 'REVENUE', value: `₹${formatNumber(totalRevenue, 0)}`, subtext: 'This month', color: '#8b5cf6' }
-    ];
-    
-    // Hide Revenue stat for Lab users
-    const stats = userRole === 'data-entry' ? allStats : allStats.filter(s => s.label !== 'REVENUE');
+    let stats = [];
+    if (userRole === 'transport') {
+        // Transport user stats
+        stats = [
+            { label: 'VEHICLES', value: vehicleMasters.length, subtext: 'Total', color: '#0ea5e9' },
+            { label: 'VEHICLE NUMBERS', value: vehicleNumbers.length, subtext: 'Total', color: '#3b82f6' },
+            { label: 'DRIVERS', value: drivers.length, subtext: 'Total', color: '#10b981' },
+            { label: 'TRANSPORT COMPANIES', value: transportCompanies.length, subtext: 'Total', color: '#6366f1' }
+        ];
+    } else {
+        const allStats = [
+            { label: 'MILK COLLECTED', value: `${formatNumber(totalLiters)} L`, subtext: 'Today', color: '#3b82f6' },
+            { label: 'VENDORS', value: vendors.length, subtext: 'Active', color: '#10b981' },
+            { label: 'ORDERS', value: pendingOrders, subtext: 'Pending', color: '#f59e0b' },
+            { label: 'REVENUE', value: `₹${formatNumber(totalRevenue, 0)}`, subtext: 'This month', color: '#8b5cf6' }
+        ];
+        // Hide Revenue stat for Lab users
+        stats = userRole === 'data-entry' ? allStats : allStats.filter(s => s.label !== 'REVENUE');
+    }
 
     const recentPurchases = purchases.slice(-5).reverse();
+    const { sales } = useData();
+    const recentSales = sales.slice(-5).reverse();
 
     return (
         <div>
             <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 24, color: '#0f172a' }}>Dashboard</h1>
-            
             {/* Stats Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
                 {stats.map((stat, idx) => (
@@ -57,7 +68,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 24 }}>
-                {/* Recent Purchases */}
+                {/* Vehicle Movement Details for Transport User */}
                 <div style={{
                     background: '#ffffff',
                     borderRadius: 16,
@@ -65,49 +76,121 @@ const Dashboard: React.FC = () => {
                     border: '1px solid #e5e7eb',
                     boxShadow: '0 4px 12px rgba(15, 23, 42, 0.06)'
                 }}>
-                    <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#0f172a' }}>Recent Purchases</h3>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Date</th>
-                                <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Vendor</th>
-                                <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Qty (L)</th>
-                                {userRole === 'data-entry' && (
-                                    <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Amount</th>
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {recentPurchases.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
-                                        No purchases yet
-                                    </td>
-                                </tr>
-                            ) : (
-                                recentPurchases.map((p) => {
-                                    const vendor = vendors.find(v => v.id === p.vendorId);
-                                    const totalLtr = p.lines.reduce((sum, l) => sum + l.ltr, 0);
-                                    return (
-                                        <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{p.date}</td>
-                                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
-                                                {vendor?.name || 'N/A'}
+                    {userRole === 'transport' ? (
+                        <>
+                            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#0f172a' }}>Vehicle Movement (Purchase Entry)</h3>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Date</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Vehicle Number</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Driver</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Qty (L)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentPurchases.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
+                                                No vehicle movement (purchase) yet
                                             </td>
-                                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', textAlign: 'right' }}>
-                                                {formatNumber(totalLtr)}
-                                            </td>
-                                            {userRole === 'data-entry' && (
-                                                <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>
-                                                    ₹{formatNumber(totalLtr * 50, 0)}
-                                                </td>
-                                            )}
                                         </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                                    ) : (
+                                        recentPurchases.map((p) => {
+                                            const totalLtr = p.lines.reduce((sum, l) => sum + (parseFloat(String(l.ltr)) || 0), 0);
+                                            return (
+                                                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{p.date}</td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>{p.vehicleNumber || ''}</td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{p.driverName || ''}</td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', textAlign: 'right' }}>{formatNumber(totalLtr)}</td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#0f172a' }}>Vehicle Movement (Sales Entry)</h3>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Date</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Vehicle Number</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Driver</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Qty (L)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentSales.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
+                                                No vehicle movement (sales) yet
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        recentSales.map((s) => {
+                                            const totalLtr = s.lines.reduce((sum, l) => sum + (parseFloat(String(l.ltr)) || 0), 0);
+                                            return (
+                                                <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{s.date}</td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>{s.vehicleNumber || ''}</td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{s.driverName || ''}</td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', textAlign: 'right' }}>{formatNumber(totalLtr)}</td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </>
+                    ) : (
+                        // ...existing Recent Purchases block...
+                        <>
+                            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#0f172a' }}>Recent Purchases</h3>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Date</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Vendor</th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Qty (L)</th>
+                                        {userRole === 'data-entry' && (
+                                            <th style={{ padding: '12px 8px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#64748b' }}>Amount</th>
+                                        )}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentPurchases.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
+                                                No purchases yet
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        recentPurchases.map((p) => {
+                                            const vendor = vendors.find(v => v.id === p.vendorId);
+                                            const totalLtr = p.lines.reduce((sum, l) => sum + (parseFloat(String(l.ltr)) || 0), 0);
+                                            return (
+                                                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{p.date}</td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
+                                                        {formatVendorDisplay(vendor?.name, vendor?.code)}
+                                                    </td>
+                                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', textAlign: 'right' }}>
+                                                        {formatNumber(totalLtr)}
+                                                    </td>
+                                                    {userRole === 'data-entry' && (
+                                                        <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>
+                                                            ₹{formatNumber(totalLtr * 50, 0)}
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </>
+                    )}
                 </div>
 
                 {/* Quick Actions */}
@@ -120,54 +203,95 @@ const Dashboard: React.FC = () => {
                 }}>
                     <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#0f172a' }}>Quick Actions</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <Link
-                            to="/vendors"
-                            style={{
-                                padding: '14px 18px',
-                                borderRadius: 12,
-                                background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                                color: 'white',
-                                textDecoration: 'none',
-                                fontWeight: 600,
-                                fontSize: 14,
-                                textAlign: 'center',
-                                boxShadow: '0 8px 20px rgba(37, 99, 235, 0.3)'
-                            }}
-                        >
-                            Add Vendor
-                        </Link>
-                        <Link
-                            to="/purchase"
-                            style={{
-                                padding: '14px 18px',
-                                borderRadius: 12,
-                                background: 'linear-gradient(135deg, #10b981, #059669)',
-                                color: 'white',
-                                textDecoration: 'none',
-                                fontWeight: 600,
-                                fontSize: 14,
-                                textAlign: 'center',
-                                boxShadow: '0 8px 20px rgba(5, 150, 105, 0.3)'
-                            }}
-                        >
-                            Record Purchase
-                        </Link>
-                        <Link
-                            to="/reports"
-                            style={{
-                                padding: '14px 18px',
-                                borderRadius: 12,
-                                background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                                color: 'white',
-                                textDecoration: 'none',
-                                fontWeight: 600,
-                                fontSize: 14,
-                                textAlign: 'center',
-                                boxShadow: '0 8px 20px rgba(124, 58, 237, 0.3)'
-                            }}
-                        >
-                            View Reports
-                        </Link>
+                        {userRole === 'transport' ? (
+                            <>
+                                <Link
+                                    to="/vehicles"
+                                    style={{
+                                        padding: '14px 18px',
+                                        borderRadius: 12,
+                                        background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
+                                        color: 'white',
+                                        textDecoration: 'none',
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        boxShadow: '0 8px 20px rgba(14, 165, 233, 0.3)'
+                                    }}
+                                >
+                                    Vehicle Master
+                                </Link>
+                                <Link
+                                    to="/vehicles?add=1"
+                                    style={{
+                                        padding: '14px 18px',
+                                        borderRadius: 12,
+                                        background: 'linear-gradient(135deg, #3b82f6, #0ea5e9)',
+                                        color: 'white',
+                                        textDecoration: 'none',
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)'
+                                    }}
+                                >
+                                    Add Vehicle
+                                </Link>
+                                <Link
+                                    to="/vehicles?tab=drivers"
+                                    style={{
+                                        padding: '14px 18px',
+                                        borderRadius: 12,
+                                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                                        color: 'white',
+                                        textDecoration: 'none',
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        boxShadow: '0 8px 20px rgba(5, 150, 105, 0.3)'
+                                    }}
+                                >
+                                    Add Driver
+                                </Link>
+                                <Link
+                                    to="/vehicles?tab=companies"
+                                    style={{
+                                        padding: '14px 18px',
+                                        borderRadius: 12,
+                                        background: 'linear-gradient(135deg, #6366f1, #3b82f6)',
+                                        color: 'white',
+                                        textDecoration: 'none',
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)'
+                                    }}
+                                >
+                                    Add Transport Company
+                                </Link>
+                            </>
+                        ) : (
+                            // ...existing quick actions...
+                            <>
+                                <Link
+                                    to="/vendors"
+                                    style={{
+                                        padding: '14px 18px',
+                                        borderRadius: 12,
+                                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                        color: 'white',
+                                        textDecoration: 'none',
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        boxShadow: '0 8px 20px rgba(37, 99, 235, 0.3)'
+                                    }}
+                                >
+                                    Add Vendor
+                                </Link>
+                                {/* ...existing quick actions for other roles... */}
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

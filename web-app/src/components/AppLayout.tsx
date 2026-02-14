@@ -16,17 +16,16 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
         return <>{children}</>;
     }
 
-    const sidebarLinks = [
+    let sidebarLinks = [
         { path: '/dashboard', icon: '📊', label: 'Dashboard' },
         { path: '/vendors', icon: '🏭', label: 'Vendor Master' },
         { path: '/milk-types', icon: '🥛', label: 'Milk Type Master' },
         { path: '/vehicles', icon: '🚛', label: 'Vehicle Master' },
-        { path: '/purchase', icon: '📦', label: 'Purchase Entry' },
+        { path: '/purchase', icon: '�', label: 'Purchase Entry' },
         { path: '/sales', icon: '💰', label: 'Sales Entry' },
         { path: '/recycle-bin', icon: '🗑️', label: 'Recycle Bin' },
     ];
-
-    const topNavLinks = [
+    let topNavLinks = [
         { path: '/dashboard', label: 'Dashboard' },
         { path: '/purchase', label: 'Purchase' },
         { path: '/sales', label: 'Sales' },
@@ -34,6 +33,52 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
         { path: '/accounts', label: 'Accounts' },
         { path: '/transport', label: 'Transport' },
     ];
+
+    if (currentUser?.role === 'lab-report') {
+        sidebarLinks = [
+            { path: '/dashboard', icon: '📊', label: 'Dashboard' },
+            { path: '/purchase', icon: '�', label: 'Purchase Entry' },
+            { path: '/sales', icon: '💰', label: 'Sales Entry' },
+            { path: '/vehicles', icon: '🚛', label: 'Vehicle Master' },
+            { path: '/recycle-bin', icon: '�️', label: 'Recycle Bin' },
+            { path: '/milk-types', icon: '🥛', label: 'Milk Type Master' },
+            { path: '/vendors', icon: '🏭', label: 'Vendor Master' },
+        ];
+        topNavLinks = [
+            { path: '/dashboard', label: 'Dashboard' },
+            { path: '/purchase', label: 'Purchase' },
+            { path: '/sales', label: 'Sales' },
+            { path: '/vehicles', label: 'Vehicle Master' },
+        ];
+    } else if (currentUser?.role === 'data-entry') {
+        sidebarLinks = [
+            { path: '/dashboard', icon: '📊', label: 'Dashboard' },
+            { path: '/purchase', icon: '📦', label: 'Purchase Entry' },
+            { path: '/sales', icon: '💰', label: 'Sales Entry' },
+            { path: '/vehicles', icon: '🚛', label: 'Vehicle Master' },
+            { path: '/recycle-bin', icon: '🗑️', label: 'Recycle Bin' },
+            { path: '/milk-types', icon: '🥛', label: 'Milk Type Master' },
+            { path: '/vendors', icon: '🏭', label: 'Vendor Master' },
+        ];
+        topNavLinks = [
+            { path: '/dashboard', label: 'Dashboard' },
+            { path: '/purchase', label: 'Purchase' },
+            { path: '/sales', label: 'Sales' },
+            { path: '/vehicles', label: 'Vehicle Master' },
+            { path: '/recycle-bin', label: 'Recycle Bin' },
+        ];
+    } else if (currentUser?.role === 'transport') {
+        sidebarLinks = [
+            { path: '/dashboard', icon: '📊', label: 'Dashboard' },
+            { path: '/vehicles', icon: '🚛', label: 'Vehicle Master' },
+            { path: '/reports', icon: '📄', label: 'Report' },
+        ];
+        topNavLinks = [
+            { path: '/dashboard', label: 'Dashboard' },
+            { path: '/vehicles', label: 'Vehicle Master' },
+            { path: '/reports', label: 'Report' },
+        ];
+    }
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f7fb' }}>

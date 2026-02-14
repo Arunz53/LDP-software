@@ -1,8 +1,6 @@
 -- LDP Software Database Schema
--- Drop existing database if exists and create new one
-DROP DATABASE IF EXISTS ldp_software;
-CREATE DATABASE ldp_software CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE ldp_software;
+-- For phpMyAdmin: Make sure you have selected the database (u478906159_ldp) before importing
+-- DROP DATABASE and CREATE DATABASE statements are removed for phpMyAdmin compatibility
 
 -- Users Table
 CREATE TABLE users (

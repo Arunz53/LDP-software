@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { recycleBinAPI } from '../services/api';
-import { formatNumber } from '../utils/snf';
+import { formatNumber, formatVendorDisplay } from '../utils/snf';
 
 interface DeletedItem {
     id: number;
@@ -172,7 +172,7 @@ const RecycleBin: React.FC = () => {
                                             {formattedDate}
                                         </td>
                                         <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>
-                                            {item.vendorName}
+                                            {formatVendorDisplay(item.vendorName, item.vendorCode)}
                                         </td>
                                         <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', textAlign: 'right' }}>
                                             {formatNumber(totalLtr)}

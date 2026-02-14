@@ -8,7 +8,6 @@ $conn = getDBConnection();
 if ($method === 'GET') {
     $stmt = $conn->query("
         SELECT p.*, 
-               p.km_charges1, p.km_charges3, p.toll_gate_charges,
                u.username as created_by_username,
                v.name as vendor_name, v.code as vendor_code
         FROM purchases p
@@ -18,14 +17,17 @@ if ($method === 'GET') {
         ORDER BY p.date DESC, p.id DESC
     ");
     $purchases = $stmt->fetchAll();
+    
     // Get lines for each purchase
     foreach ($purchases as &$purchase) {
         $stmt = $conn->prepare("SELECT * FROM purchase_lines WHERE purchase_id = ?");
         $stmt->execute([$purchase['id']]);
         $purchase['lines'] = $stmt->fetchAll();
     }
+    
     // Convert to camelCase
     $purchases = array_map('snakeToCamel', $purchases);
+    
     sendResponse($purchases);
 }
 
@@ -33,15 +35,14 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     $userId = requireAuth();
     $input = getJsonInput();
+    
     try {
         $conn->beginTransaction();
-        // Insert purchase with billing fields
+        
+        // Insert purchase
         $stmt = $conn->prepare("
-            INSERT INTO purchases (
-                invoice_no, date, vendor_id, state, vehicle_number, driver_name, driver_mobile, status, created_by,
-                km_charges1, km_charges3, toll_gate_charges
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO purchases (invoice_no, date, vendor_id, state, vehicle_number, driver_name, driver_mobile, status, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $input['invoiceNo'],
@@ -52,11 +53,9 @@ if ($method === 'POST') {
             $input['driverName'] ?? null,
             $input['driverMobile'] ?? null,
             $input['status'] ?? 'Delivered',
-            $userId,
-            $input['kmCharges1'] ?? 0,
-            $input['kmCharges3'] ?? 0,
-            $input['tollGateCharges'] ?? 0
+            $userId
         ]);
+        
         $purchaseId = $conn->lastInsertId();
         
         // Insert purchase lines
@@ -113,38 +112,15 @@ if ($method === 'PUT') {
     $input = getJsonInput();
     $id = $input['id'] ?? null;
     $status = $input['status'] ?? null;
-    $kmCharges1 = $input['kmCharges1'] ?? null;
-    $kmCharges3 = $input['kmCharges3'] ?? null;
-    $tollGateCharges = $input['tollGateCharges'] ?? null;
-    if (!$id) {
-        sendError('Purchase ID is required');
+    
+    if (!$id || !$status) {
+        sendError('Purchase ID and status are required');
     }
-    $fields = [];
-    $params = [];
-    if ($status) {
-        $fields[] = "status = ?";
-        $params[] = $status;
-    }
-    if ($kmCharges1 !== null) {
-        $fields[] = "km_charges1 = ?";
-        $params[] = $kmCharges1;
-    }
-    if ($kmCharges3 !== null) {
-        $fields[] = "km_charges3 = ?";
-        $params[] = $kmCharges3;
-    }
-    if ($tollGateCharges !== null) {
-        $fields[] = "toll_gate_charges = ?";
-        $params[] = $tollGateCharges;
-    }
-    if (empty($fields)) {
-        sendError('No fields to update');
-    }
-    $params[] = $id;
-    $sql = "UPDATE purchases SET " . implode(', ', $fields) . " WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
-    sendResponse(['message' => 'Purchase updated successfully']);
+    
+    $stmt = $conn->prepare("UPDATE purchases SET status = ? WHERE id = ?");
+    $stmt->execute([$status, $id]);
+    
+    sendResponse(['message' => 'Purchase status updated successfully']);
 }
 
 // DELETE - Soft delete purchase

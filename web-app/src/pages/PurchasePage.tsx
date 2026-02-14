@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useData, summarizeLiters, todayIso } from '../context/DataContext';
-import { computeSnf, formatNumber } from '../utils/snf';
-import { PurchaseLine, StateCode } from '../types';
+import { recycleBinAPI } from '../services/api';
+import { computeSnf, formatNumber, formatVendorDisplay } from '../utils/snf';
+import { Purchase, PurchaseLine, StateCode } from '../types';
 import { useHistory } from 'react-router-dom';
 import SearchableDropdown from '../components/SearchableDropdown';
+import PrintInvoice from '../components/PrintInvoice';
 
 const compartmentOptions: PurchaseLine['compartment'][] = ['Front', 'Middle', 'Back', 'Average'];
 
@@ -52,6 +54,9 @@ const PurchasePage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<'All' | 'Delivered' | 'Accepted' | 'Rejected'>('Delivered');
     const [isFiltered, setIsFiltered] = useState(false);
     const [vendorSearchFilter, setVendorSearchFilter] = useState('');
+    const [printingPurchase, setPrintingPurchase] = useState<Purchase | null>(null);
+    const [rejectedPurchases, setRejectedPurchases] = useState<any[]>([]);
+    const [loadingRejected, setLoadingRejected] = useState(false);
 
     const filteredVendors = useMemo(
         () =>
@@ -112,6 +117,9 @@ const PurchasePage: React.FC = () => {
                 driverMobile,
                 status: 'Delivered',
                 lines,
+                kmCharges1: 0,
+                kmCharges3: 0,
+                tollGateCharges: 0,
             });
             setMessage(`Saved purchase ${invoiceNo}`);
             setShowForm(false);
@@ -133,43 +141,69 @@ const PurchasePage: React.FC = () => {
     };
 
     const filteredPurchases = useMemo(() => {
-        let result = [...purchases];
-        
-        // Apply status filtering (default is 'Delivered' to hide accepted purchases)
-        if (statusFilter !== 'All') {
-            result = result.filter((p) => p.status === statusFilter);
-        }
-        
-        // Apply date filtering only if isFiltered is true
-        if (isFiltered && fromDate && toDate) {
-            result = result.filter((p) => {
-                // Compare date strings directly (YYYY-MM-DD format)
-                return p.date >= fromDate && p.date <= toDate;
+        if (statusFilter === 'Rejected') {
+            let result = [...rejectedPurchases];
+            // Apply date filtering only if isFiltered is true
+            if (isFiltered && fromDate && toDate) {
+                result = result.filter((p) => {
+                    return p.date >= fromDate && p.date <= toDate;
+                });
+            }
+            // Apply vendor search filter
+            if (vendorSearchFilter.trim()) {
+                result = result.filter((p) => {
+                    const vendorName = p.vendorName || '';
+                    const vendorCode = p.vendorCode || '';
+                    const searchTerm = vendorSearchFilter.toLowerCase();
+                    return vendorName.toLowerCase().includes(searchTerm) || 
+                        vendorCode.toLowerCase().includes(searchTerm);
+                });
+            }
+            return result.sort((a, b) => {
+                const diff = new Date(b.date).getTime() - new Date(a.date).getTime();
+                if (diff !== 0) return diff;
+                return (b.id || 0) - (a.id || 0);
+            });
+        } else {
+            let result = [...purchases];
+            if (statusFilter !== 'All') {
+                result = result.filter((p) => p.status === statusFilter);
+            }
+            if (isFiltered && fromDate && toDate) {
+                result = result.filter((p) => {
+                    return p.date >= fromDate && p.date <= toDate;
+                });
+            }
+            if (vendorSearchFilter.trim()) {
+                result = result.filter((p) => {
+                    const vendor = vendors.find((v) => v.id === p.vendorId);
+                    const vendorName = vendor?.name || '';
+                    const vendorCode = vendor?.code || '';
+                    const searchTerm = vendorSearchFilter.toLowerCase();
+                    return vendorName.toLowerCase().includes(searchTerm) || 
+                        vendorCode.toLowerCase().includes(searchTerm);
+                });
+            }
+            return result.sort((a, b) => {
+                const diff = new Date(b.date).getTime() - new Date(a.date).getTime();
+                if (diff !== 0) return diff;
+                return (b.id || 0) - (a.id || 0);
             });
         }
-        
-        // Apply vendor search filter
-        if (vendorSearchFilter.trim()) {
-            result = result.filter((p) => {
-                const vendor = vendors.find((v) => v.id === p.vendorId);
-                const vendorName = vendor?.name || '';
-                const vendorCode = vendor?.code || '';
-                const searchTerm = vendorSearchFilter.toLowerCase();
-                return vendorName.toLowerCase().includes(searchTerm) || 
-                       vendorCode.toLowerCase().includes(searchTerm);
-            });
+    }, [purchases, statusFilter, isFiltered, fromDate, toDate, vendorSearchFilter, vendors, rejectedPurchases]);
+
+    useEffect(() => {
+        if (statusFilter === 'Rejected') {
+            setLoadingRejected(true);
+            recycleBinAPI.getAll('purchases')
+                .then((data) => setRejectedPurchases(data))
+                .catch(() => setRejectedPurchases([]))
+                .finally(() => setLoadingRejected(false));
         }
-        
-        // Sort newest first (tie-break by id desc)
-        return result.sort((a, b) => {
-            const diff = new Date(b.date).getTime() - new Date(a.date).getTime();
-            if (diff !== 0) return diff;
-            return (b.id || 0) - (a.id || 0);
-        });
-    }, [purchases, statusFilter, isFiltered, fromDate, toDate, vendorSearchFilter, vendors]);
+    }, [statusFilter]);
 
     const totalLiters = filteredPurchases.reduce(
-        (sum, p) => sum + p.lines.reduce((lineSum, l) => lineSum + (l.ltr || 0), 0),
+        (sum, p) => sum + p.lines.reduce((lineSum: number, l: any) => lineSum + (l.ltr || 0), 0),
         0
     );
 
@@ -182,14 +216,14 @@ const PurchasePage: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (window.confirm('Are you sure you want to reject this purchase?')) {
+        if (window.confirm('Are you sure you want to move this purchase to the rejected list? It will be stored in the rejected section.')) {
             try {
-                await updatePurchaseStatus(id, 'Rejected');
-                setMessage('Purchase rejected successfully');
+                await deletePurchase(id);
+                setMessage('Purchase moved to rejected list successfully');
                 setTimeout(() => setMessage(''), 3000);
             } catch (error) {
-                console.error('Failed to reject purchase:', error);
-                setMessage('Failed to reject purchase');
+                console.error('Failed to move purchase to rejected list:', error);
+                setMessage('Failed to move purchase to rejected list');
             }
         }
     };
@@ -401,17 +435,17 @@ const PurchasePage: React.FC = () => {
                             ) : (
                                 filteredPurchases.map((p, index) => {
                                     const vendor = vendors.find((v) => v.id === p.vendorId);
-                                    const totalKg = p.lines.reduce((sum, l) => sum + l.kgQty, 0);
-                                    const totalLtr = p.lines.reduce((sum, l) => sum + l.ltr, 0);
-                                    const avgFat = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + l.fat, 0) / p.lines.length : 0;
-                                    const avgSnf = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + l.snf, 0) / p.lines.length : 0;
-                                    const avgClr = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + l.clr, 0) / p.lines.length : 0;
+                                    const totalKg = p.lines.reduce((sum: number, l: any) => sum + (parseFloat(String(l.kgQty)) || 0), 0);
+                                    const totalLtr = p.lines.reduce((sum: number, l: any) => sum + (parseFloat(String(l.ltr)) || 0), 0);
+                                    const avgFat = p.lines.length > 0 ? p.lines.reduce((sum: number, l: any) => sum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0;
+                                    const avgSnf = p.lines.length > 0 ? p.lines.reduce((sum: number, l: any) => sum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0;
+                                    const avgClr = p.lines.length > 0 ? p.lines.reduce((sum: number, l: any) => sum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0;
                                     const formattedDate = new Date(p.date).toLocaleDateString('en-GB');
                                     return (
                                         <tr key={`${p.id}-${p.invoiceNo}-${index}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569' }}>{formattedDate}</td>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
-                                                {vendor?.name || 'N/A'}
+                                                {formatVendorDisplay(vendor?.name, vendor?.code)}
                                             </td>
                                             <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
                                                 {p.invoiceNo || 'N/A'}
@@ -432,7 +466,7 @@ const PurchasePage: React.FC = () => {
                                                 {formatNumber(avgClr, 2)}
                                             </td>
                                             <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                                                {userRole === 'data-entry' && (
+                                                {userRole === 'data-entry' && statusFilter !== 'Accepted' && (
                                                     <button
                                                         type="button"
                                                         onClick={() => handleAccept(p.id)}
@@ -441,12 +475,15 @@ const PurchasePage: React.FC = () => {
                                                         Accept
                                                     </button>
                                                 )}
-                                                <button
-                                                    type="button"
-                                                    style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#64748b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                                >
-                                                    Print
-                                                </button>
+                                                {userRole === 'data-entry' && p.status === 'Accepted' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPrintingPurchase(p)}
+                                                        style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#64748b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                                    >
+                                                        Print
+                                                    </button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#10b981', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
@@ -466,13 +503,54 @@ const PurchasePage: React.FC = () => {
                                 })
                             )}
                         </tbody>
+                        <tfoot>
+                            {filteredPurchases.length > 0 && (
+                                <tr style={{ background: '#f8fafc', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                                    <td colSpan={3} style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a' }}>
+                                        TOTAL / AVERAGE
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.reduce((sum: number, p: any) => sum + (p.lines ? p.lines.reduce((lsum: number, l: any) => lsum + (parseFloat(String(l.kgQty)) || 0), 0) : 0), 0))}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.reduce((sum: number, p: any) => sum + (p.lines ? p.lines.reduce((lsum: number, l: any) => lsum + (parseFloat(String(l.ltr)) || 0), 0) : 0), 0))}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.length > 0 
+                                            ? filteredPurchases.reduce((sum: number, p: any) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum: number, l: any) => lsum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0), 0) / filteredPurchases.length
+                                            : 0, 2)}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.length > 0 
+                                            ? filteredPurchases.reduce((sum: number, p: any) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum: number, l: any) => lsum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0), 0) / filteredPurchases.length
+                                            : 0, 2)}
+                                    </td>
+                                    <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
+                                        {formatNumber(filteredPurchases.length > 0 
+                                            ? filteredPurchases.reduce((sum: number, p: any) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum: number, l: any) => lsum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0), 0) / filteredPurchases.length
+                                            : 0, 2)}
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            )}
+                        </tfoot>
                     </table>
                 </div>
+
+                {/* Print Invoice Modal */}
+                {printingPurchase && (
+                    <PrintInvoice
+                        purchase={printingPurchase}
+                        vendor={vendors.find((v) => v.id === printingPurchase.vendorId)}
+                        type="purchase"
+                        onClose={() => setPrintingPurchase(null)}
+                    />
+                )}
             </div>
         );
     }
 
-    return (
+        return (
         <div style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h2>Purchase Entry</h2>
@@ -844,6 +922,16 @@ const PurchasePage: React.FC = () => {
                 </button>
                 {message && <p style={{ color: 'green' }}>{message}</p>}
             </form>
+
+            {/* Print Invoice Modal */}
+            {printingPurchase && (
+                <PrintInvoice
+                    purchase={printingPurchase}
+                    vendor={vendors.find((v) => v.id === printingPurchase.vendorId)}
+                    type="purchase"
+                    onClose={() => setPrintingPurchase(null)}
+                />
+            )}
         </div>
     );
 };

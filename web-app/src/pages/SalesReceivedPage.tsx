@@ -28,10 +28,14 @@ interface ReceivedLine extends PurchaseLine {
 
 const SalesReceivedPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { sales, vendors, milkTypes, updateSalesStatus, vehicleNumbers, drivers } = useData();
+    const { sales, vendors, milkTypes, updateSalesStatus, vehicleNumbers, drivers, currentUser, userRole } = useData();
     const history = useHistory();
     
     const sale = sales.find(s => s.id === Number(id));
+    
+    // Data entry users cannot edit the Dispatch Entry section (delivery lines)
+    // But they can edit Other Company Received Entry section and all other fields
+    const isDispatchEntryEditable = userRole !== 'data-entry';
     
     // Editable sale fields
     const [receivedDate, setReceivedDate] = useState('');
@@ -56,6 +60,7 @@ const SalesReceivedPage: React.FC = () => {
     const [tollGateCharges, setTollGateCharges] = useState(0);
     const [excludingKm, setExcludingKm] = useState(false);
     const [discount, setDiscount] = useState(0);
+    const [tdsPercentage, setTdsPercentage] = useState(0);
     const [tdsDeduction, setTdsDeduction] = useState(0);
     const [message, setMessage] = useState('');
 
@@ -119,6 +124,22 @@ const SalesReceivedPage: React.FC = () => {
         }
     }, [tdsAmount, receivedSolid]);
 
+    // Calculate TDS amount from percentage and gross amount
+    useEffect(() => {
+        if (tdsPercentage > 0) {
+            // Calculate TDS amount first from current gross (before TDS)
+            const totalAmount = receivedLines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
+            const tsTotal = fixedCost * receivedTotals.ltr;
+            const kmTotal = kmCharges1 * kmCharges3;
+            const transportAmount = kmTotal + tollGateCharges;
+            const currentGross = totalAmount + tsTotal + (excludingKm ? 0 : transportAmount) - discount;
+            const calculatedTds = (currentGross * tdsPercentage) / 100;
+            setTdsDeduction(calculatedTds);
+        } else {
+            setTdsDeduction(0);
+        }
+    }, [tdsPercentage, receivedLines, fixedCost, receivedTotals.ltr, kmCharges1, kmCharges3, tollGateCharges, excludingKm, discount]);
+
     // Calculate billing amounts
     const totalLiter = receivedTotals.ltr;
     const tsTotal = fixedCost * totalLiter; // Total TS amount = Fixed * Total Liters
@@ -127,6 +148,7 @@ const SalesReceivedPage: React.FC = () => {
     const totalAmount = receivedLines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
     const grossAmount = totalAmount + tsTotal + (excludingKm ? 0 : transportAmount); // Subtract transport if excluding KM
     const netAmount = grossAmount - discount - tdsDeduction;
+    const roundedNetAmount = Math.round(netAmount);
 
     const handleDeliveryLineChange = (id: string, key: keyof PurchaseLine, value: string | number) => {
         setDeliveryLines(prev => 
@@ -204,7 +226,12 @@ const SalesReceivedPage: React.FC = () => {
     const handleAccept = async () => {
         if (window.confirm('Are you sure you want to accept this sale? This will update the status to Accepted.')) {
             try {
-                await updateSalesStatus(sale.id, 'Accepted');
+                await updateSalesStatus(sale.id, {
+                    status: 'Accepted',
+                    kmCharges1,
+                    kmCharges3,
+                    tollGateCharges
+                });
                 setMessage('Sale accepted successfully!');
                 setTimeout(() => {
                     history.push('/sales');
@@ -262,6 +289,8 @@ const SalesReceivedPage: React.FC = () => {
                         ← Back to List
                     </button>
                 </div>
+
+
 
                 {/* Editable Sale Details - Two Column Layout */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
@@ -382,17 +411,17 @@ const SalesReceivedPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Two Column Layout: Left (Delivery + Received) | Right (Billing) */}
+                {/* Two Column Layout: Left (Dispatch + Other Company Received) | Right (Billing) */}
                 <div style={{ display: 'grid', gridTemplateColumns: '50% 50%', gap: 16, marginBottom: 24 }}>
                     
-                    {/* Left Column - Delivery Entry + Received Entry */}
+                    {/* Left Column - Dispatch Entry + Other Company Received Entry */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         
-                        {/* Delivery Entry */}
+                        {/* Dispatch Entry */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                 <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#0f172a' }}>
-                                    📋 DELIVERY ENTRY
+                                    📋 DISPATCH ENTRY
                                 </h3>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', background: '#fef3c7', padding: '4px 12px', borderRadius: 6, border: '1px solid #fbbf24' }}>
                                     Solid: {formatNumber(deliverySolid, 2)}
@@ -429,7 +458,9 @@ const SalesReceivedPage: React.FC = () => {
                                                 borderRadius: 3,
                                                 fontSize: '11px',
                                                 textAlign: 'right',
-                                                boxSizing: 'border-box'
+                                                boxSizing: 'border-box',
+                                                background: isDispatchEntryEditable ? '#ffffff' : '#f8fafc',
+                                                color: isDispatchEntryEditable ? '#000000' : '#64748b'
                                             };
                                             return (
                                                 <tr key={line.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -441,6 +472,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             step="0.01"
                                                             value={line.kgQty}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'kgQty', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -453,6 +485,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             step="0.01"
                                                             value={line.fat}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'fat', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -462,6 +495,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             step="0.01"
                                                             value={line.clr}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'clr', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -474,6 +508,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             step="0.01"
                                                             value={line.temperature || ''}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'temperature', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -482,6 +517,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             type="text"
                                                             value={line.mbrt || ''}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'mbrt', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -491,6 +527,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             step="0.01"
                                                             value={line.acidity || ''}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'acidity', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -499,6 +536,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             type="text"
                                                             value={line.cob || ''}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'cob', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -507,6 +545,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             type="text"
                                                             value={line.alcohol || ''}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'alcohol', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -515,6 +554,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             type="text"
                                                             value={line.adulteration || ''}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'adulteration', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -523,6 +563,7 @@ const SalesReceivedPage: React.FC = () => {
                                                             type="text"
                                                             value={line.sealNo || ''}
                                                             onChange={(e) => handleDeliveryLineChange(line.id, 'sealNo', e.target.value)}
+                                                            disabled={!isDispatchEntryEditable}
                                                             style={smallInputStyle}
                                                         />
                                                     </td>
@@ -544,11 +585,11 @@ const SalesReceivedPage: React.FC = () => {
                         </div>
                     </div>
 
-                        {/* Received Entry Below Delivery Entry */}
+                        {/* Other Company Received Entry Below Dispatch Entry */}
                         <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                             <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#0f172a' }}>
-                                ✅ RECEIVED ENTRY
+                                ✅ OTHER COMPANY RECEIVED ENTRY
                             </h3>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', background: '#d1fae5', padding: '4px 12px', borderRadius: 6, border: '1px solid #10b981' }}>
                                 Solid: {formatNumber(receivedSolid, 2)}
@@ -968,22 +1009,53 @@ const SalesReceivedPage: React.FC = () => {
                                 </div>
 
                                 {/* 8th Row: TDS */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: 8, alignItems: 'center' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr auto', gap: 8, alignItems: 'center' }}>
                                     <label style={{ fontSize: 12, fontWeight: 600, color: '#377df4' }}>TDS</label>
                                     <div></div>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={tdsDeduction}
-                                        onChange={(e) => setTdsDeduction(Number(e.target.value))}
-                                        style={{ 
-                                            padding: '6px 10px', 
-                                            border: '1px solid #d1d5db', 
-                                            borderRadius: 4, 
-                                            fontSize: '13px',
-                                            textAlign: 'right'
-                                        }}
-                                    />
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <div style={{ position: 'relative', width: '100px' }}>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={tdsPercentage}
+                                                onChange={(e) => setTdsPercentage(Number(e.target.value))}
+                                                placeholder="0.00"
+                                                style={{ 
+                                                    width: '100%',
+                                                    padding: '6px 24px 6px 10px', 
+                                                    border: '1px solid #d1d5db', 
+                                                    borderRadius: 4, 
+                                                    fontSize: '13px',
+                                                    textAlign: 'right'
+                                                }}
+                                            />
+                                            <span style={{ 
+                                                position: 'absolute', 
+                                                right: '8px', 
+                                                top: '50%', 
+                                                transform: 'translateY(-50%)', 
+                                                fontSize: '13px',
+                                                color: '#64748b',
+                                                fontWeight: 600
+                                            }}>%</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={formatNumber(tdsDeduction, 2)}
+                                            readOnly
+                                            style={{ 
+                                                width: '140px',
+                                                padding: '6px 10px', 
+                                                border: '1px solid #d1d5db', 
+                                                borderRadius: 4, 
+                                                fontSize: '13px',
+                                                fontWeight: 600,
+                                                textAlign: 'right',
+                                                background: '#f9fafb',
+                                                color: '#64748b'
+                                            }}
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* 9th Row: Net Amount */}
@@ -992,7 +1064,7 @@ const SalesReceivedPage: React.FC = () => {
                                     <label style={{ fontSize: 12, fontWeight: 700, color: '#e91e8c', textAlign: 'center' }}>Net Amount</label>
                                     <input
                                         type="text"
-                                        value={formatNumber(netAmount, 2)}
+                                        value={formatNumber(roundedNetAmount, 2)}
                                         readOnly
                                         style={{ 
                                             padding: '8px 12px', 
@@ -1024,7 +1096,8 @@ const SalesReceivedPage: React.FC = () => {
                             fontSize: 16,
                             fontWeight: 700,
                             cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
+                            boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+                            opacity: 1
                         }}
                     >
                         ✓ Accept Sale

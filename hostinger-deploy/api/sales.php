@@ -41,8 +41,8 @@ if ($method === 'POST') {
         
         // Insert sale
         $stmt = $conn->prepare("
-            INSERT INTO sales (invoice_no, date, vendor_id, state, vehicle_number, driver_name, driver_mobile, status, created_by, km_charges1, km_charges3, toll_gate_charges)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO sales (invoice_no, date, vendor_id, state, vehicle_number, driver_name, driver_mobile, status, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $input['invoiceNo'],
@@ -53,10 +53,7 @@ if ($method === 'POST') {
             $input['driverName'] ?? null,
             $input['driverMobile'] ?? null,
             $input['status'] ?? 'Delivered',
-            $userId,
-            $input['kmCharges1'] ?? 0,
-            $input['kmCharges3'] ?? 0,
-            $input['tollGateCharges'] ?? 0
+            $userId
         ]);
         
         $salesId = $conn->lastInsertId();
@@ -120,20 +117,8 @@ if ($method === 'PUT') {
         sendError('Sale ID and status are required');
     }
     
-    // Support updating billing fields as well
-    $kmCharges1 = $input['kmCharges1'] ?? null;
-    $kmCharges3 = $input['kmCharges3'] ?? null;
-    $tollGateCharges = $input['tollGateCharges'] ?? null;
-    
-    $fields = ['status = ?'];
-    $params = [$status];
-    if ($kmCharges1 !== null) { $fields[] = 'km_charges1 = ?'; $params[] = $kmCharges1; }
-    if ($kmCharges3 !== null) { $fields[] = 'km_charges3 = ?'; $params[] = $kmCharges3; }
-    if ($tollGateCharges !== null) { $fields[] = 'toll_gate_charges = ?'; $params[] = $tollGateCharges; }
-    $params[] = $id;
-    $sql = 'UPDATE sales SET ' . implode(', ', $fields) . ' WHERE id = ?';
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
+    $stmt = $conn->prepare("UPDATE sales SET status = ? WHERE id = ?");
+    $stmt->execute([$status, $id]);
     
     sendResponse(['message' => 'Sale status updated successfully']);
 }
