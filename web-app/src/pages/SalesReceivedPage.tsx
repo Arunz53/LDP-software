@@ -226,7 +226,12 @@ const SalesReceivedPage: React.FC = () => {
     const handleAccept = async () => {
         if (window.confirm('Are you sure you want to accept this sale? This will update the status to Accepted.')) {
             try {
-                await updateSalesStatus(sale.id, 'Accepted');
+                await updateSalesStatus(sale.id, {
+                    status: 'Accepted',
+                    kmCharges1,
+                    kmCharges3,
+                    tollGateCharges
+                });
                 setMessage('Sale accepted successfully!');
                 setTimeout(() => {
                     history.push('/sales');

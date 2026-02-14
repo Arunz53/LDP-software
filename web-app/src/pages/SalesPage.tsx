@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useData, summarizeLiters, todayIso } from '../context/DataContext';
+import { recycleBinAPI } from '../services/api';
 import { computeSnf, formatNumber, formatVendorDisplay } from '../utils/snf';
 import { Purchase, PurchaseLine, StateCode } from '../types';
 import { useHistory } from 'react-router-dom';
@@ -54,6 +55,8 @@ const SalesPage: React.FC = () => {
     const [isFiltered, setIsFiltered] = useState(false);
     const [vendorSearchFilter, setVendorSearchFilter] = useState('');
     const [printingSale, setPrintingSale] = useState<Purchase | null>(null);
+    const [rejectedSales, setRejectedSales] = useState<any[]>([]);
+    const [loadingRejected, setLoadingRejected] = useState(false);
 
     const filteredVendors = useMemo(
         () =>
@@ -143,43 +146,67 @@ const SalesPage: React.FC = () => {
     };
 
     const filteredSales = useMemo(() => {
-        let result = [...sales];
-        
-        // Apply status filtering (default is 'Delivered' to hide accepted sales)
-        if (statusFilter !== 'All') {
-            result = result.filter((p) => p.status === statusFilter);
-        }
-        
-        // Apply date filtering only if isFiltered is true
-        if (isFiltered && fromDate && toDate) {
-            result = result.filter((p) => {
-                // Compare date strings directly (YYYY-MM-DD format)
-                return p.date >= fromDate && p.date <= toDate;
+        if (statusFilter === 'Rejected') {
+            let result = [...rejectedSales];
+            if (isFiltered && fromDate && toDate) {
+                result = result.filter((p) => {
+                    return p.date >= fromDate && p.date <= toDate;
+                });
+            }
+            if (vendorSearchFilter.trim()) {
+                result = result.filter((p) => {
+                    const vendorName = p.vendorName || '';
+                    const vendorCode = p.vendorCode || '';
+                    const searchTerm = vendorSearchFilter.toLowerCase();
+                    return vendorName.toLowerCase().includes(searchTerm) || 
+                        vendorCode.toLowerCase().includes(searchTerm);
+                });
+            }
+            return result.sort((a, b) => {
+                const diff = new Date(b.date).getTime() - new Date(a.date).getTime();
+                if (diff !== 0) return diff;
+                return (b.id || 0) - (a.id || 0);
+            });
+        } else {
+            let result = [...sales];
+            if (statusFilter !== 'All') {
+                result = result.filter((p) => p.status === statusFilter);
+            }
+            if (isFiltered && fromDate && toDate) {
+                result = result.filter((p) => {
+                    return p.date >= fromDate && p.date <= toDate;
+                });
+            }
+            if (vendorSearchFilter.trim()) {
+                result = result.filter((p) => {
+                    const vendor = vendors.find((v) => v.id === p.vendorId);
+                    const vendorName = vendor?.name || '';
+                    const vendorCode = vendor?.code || '';
+                    const searchTerm = vendorSearchFilter.toLowerCase();
+                    return vendorName.toLowerCase().includes(searchTerm) || 
+                        vendorCode.toLowerCase().includes(searchTerm);
+                });
+            }
+            return result.sort((a, b) => {
+                const diff = new Date(b.date).getTime() - new Date(a.date).getTime();
+                if (diff !== 0) return diff;
+                return (b.id || 0) - (a.id || 0);
             });
         }
-        
-        // Apply vendor search filter
-        if (vendorSearchFilter.trim()) {
-            result = result.filter((p) => {
-                const vendor = vendors.find((v) => v.id === p.vendorId);
-                const vendorName = vendor?.name || '';
-                const vendorCode = vendor?.code || '';
-                const searchTerm = vendorSearchFilter.toLowerCase();
-                return vendorName.toLowerCase().includes(searchTerm) || 
-                       vendorCode.toLowerCase().includes(searchTerm);
-            });
+    }, [sales, statusFilter, isFiltered, fromDate, toDate, vendorSearchFilter, vendors, rejectedSales]);
+
+    useEffect(() => {
+        if (statusFilter === 'Rejected') {
+            setLoadingRejected(true);
+            recycleBinAPI.getAll('sales')
+                .then((data) => setRejectedSales(data))
+                .catch(() => setRejectedSales([]))
+                .finally(() => setLoadingRejected(false));
         }
-        
-        // Sort newest first (tie-break by id desc)
-        return result.sort((a, b) => {
-            const diff = new Date(b.date).getTime() - new Date(a.date).getTime();
-            if (diff !== 0) return diff;
-            return (b.id || 0) - (a.id || 0);
-        });
-    }, [sales, statusFilter, isFiltered, fromDate, toDate, vendorSearchFilter, vendors]);
+    }, [statusFilter]);
 
     const totalLiters = filteredSales.reduce(
-        (sum, p) => sum + (p.lines ? p.lines.reduce((lineSum, l) => lineSum + (parseFloat(String(l.ltr)) || 0), 0) : 0),
+        (sum, p) => sum + (p.lines ? p.lines.reduce((lineSum: number, l: PurchaseLine) => lineSum + (parseFloat(String(l.ltr)) || 0), 0) : 0),
         0
     );
 
@@ -192,14 +219,14 @@ const SalesPage: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (window.confirm('Are you sure you want to reject this sale?')) {
+        if (window.confirm('Are you sure you want to move this sale to the rejected list? It will be stored in the rejected section.')) {
             try {
-                await updateSalesStatus(id, 'Rejected');
-                setMessage('Sale rejected successfully');
+                await deleteSales(id);
+                setMessage('Sale moved to rejected list successfully');
                 setTimeout(() => setMessage(''), 3000);
             } catch (error) {
-                console.error('Failed to reject sale:', error);
-                setMessage('Failed to reject sale');
+                console.error('Failed to move sale to rejected list:', error);
+                setMessage('Failed to move sale to rejected list');
             }
         }
     };
@@ -408,11 +435,11 @@ const SalesPage: React.FC = () => {
                             ) : (
                                 filteredSales.map((p, index) => {
                                     const vendor = vendors.find((v) => v.id === p.vendorId);
-                                    const totalKg = p.lines.reduce((sum, l) => sum + (parseFloat(String(l.kgQty)) || 0), 0);
-                                    const totalLtr = p.lines.reduce((sum, l) => sum + (parseFloat(String(l.ltr)) || 0), 0);
-                                    const avgFat = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0;
-                                    const avgSnf = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0;
-                                    const avgClr = p.lines.length > 0 ? p.lines.reduce((sum, l) => sum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0;
+                                    const totalKg = p.lines.reduce((sum: number, l: PurchaseLine) => sum + (parseFloat(String(l.kgQty)) || 0), 0);
+                                    const totalLtr = p.lines.reduce((sum: number, l: PurchaseLine) => sum + (parseFloat(String(l.ltr)) || 0), 0);
+                                    const avgFat = p.lines.length > 0 ? p.lines.reduce((sum: number, l: PurchaseLine) => sum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0;
+                                    const avgSnf = p.lines.length > 0 ? p.lines.reduce((sum: number, l: PurchaseLine) => sum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0;
+                                    const avgClr = p.lines.length > 0 ? p.lines.reduce((sum: number, l: PurchaseLine) => sum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0;
                                     const formattedDate = new Date(p.date).toLocaleDateString('en-GB');
                                     return (
                                         <tr key={`${p.id}-${p.invoiceNo}-${index}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -439,7 +466,7 @@ const SalesPage: React.FC = () => {
                                                 {formatNumber(avgClr, 2)}
                                             </td>
                                             <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                                                {userRole === 'data-entry' && (
+                                                {userRole === 'data-entry' && statusFilter !== 'Accepted' && (
                                                     <button
                                                         type="button"
                                                         onClick={() => handleAccept(p.id)}
@@ -448,13 +475,15 @@ const SalesPage: React.FC = () => {
                                                         Accept
                                                     </button>
                                                 )}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPrintingSale(p)}
-                                                    style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#64748b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                                >
-                                                    Print
-                                                </button>
+                                                {userRole === 'data-entry' && p.status === 'Accepted' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPrintingSale(p)}
+                                                        style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#64748b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                                    >
+                                                        Print
+                                                    </button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     style={{ marginRight: 6, padding: '4px 8px', fontSize: 12, background: '#10b981', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
@@ -481,24 +510,24 @@ const SalesPage: React.FC = () => {
                                         TOTAL / AVERAGE
                                     </td>
                                     <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
-                                        {formatNumber(filteredSales.reduce((sum, p) => sum + (p.lines ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.kgQty)) || 0), 0) : 0), 0))}
+                                        {formatNumber(filteredSales.reduce((sum, p) => sum + (p.lines ? p.lines.reduce((lsum: number, l: PurchaseLine) => lsum + (parseFloat(String(l.kgQty)) || 0), 0) : 0), 0))}
                                     </td>
                                     <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
-                                        {formatNumber(filteredSales.reduce((sum, p) => sum + (p.lines ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.ltr)) || 0), 0) : 0), 0))}
+                                        {formatNumber(filteredSales.reduce((sum, p) => sum + (p.lines ? p.lines.reduce((lsum: number, l: PurchaseLine) => lsum + (parseFloat(String(l.ltr)) || 0), 0) : 0), 0))}
                                     </td>
                                     <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
                                         {formatNumber(filteredSales.length > 0 
-                                            ? filteredSales.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0), 0) / filteredSales.length
+                                            ? filteredSales.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum: number, l: PurchaseLine) => lsum + (parseFloat(String(l.fat)) || 0), 0) / p.lines.length : 0), 0) / filteredSales.length
                                             : 0, 2)}
                                     </td>
                                     <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
                                         {formatNumber(filteredSales.length > 0 
-                                            ? filteredSales.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0), 0) / filteredSales.length
+                                            ? filteredSales.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum: number, l: PurchaseLine) => lsum + (parseFloat(String(l.snf)) || 0), 0) / p.lines.length : 0), 0) / filteredSales.length
                                             : 0, 2)}
                                     </td>
                                     <td style={{ padding: '12px 8px', fontSize: 13, color: '#0f172a', textAlign: 'right' }}>
                                         {formatNumber(filteredSales.length > 0 
-                                            ? filteredSales.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum, l) => lsum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0), 0) / filteredSales.length
+                                            ? filteredSales.reduce((sum, p) => sum + (p.lines && p.lines.length > 0 ? p.lines.reduce((lsum: number, l: PurchaseLine) => lsum + (parseFloat(String(l.clr)) || 0), 0) / p.lines.length : 0), 0) / filteredSales.length
                                             : 0, 2)}
                                     </td>
                                     <td></td>

@@ -1,17 +1,23 @@
 <?php
-// Database configuration
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'ldp_software');
-define('DB_USER', 'root');
-define('DB_PASS', 'newpassword');
+// Complete Production Config for Hostinger - Lakshmi Dairy
 
-// CORS Configuration
-// Allow both localhost:3000 and localhost:8081 for local dev
-$allowed_origins = ['http://localhost:3000', 'http://localhost:8081'];
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+// ===== DATABASE CONFIGURATION =====
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'u478906159_lakshmi');
+define('DB_USER', 'u478906159_lakshmi');
+define('DB_PASS', 'Arunasai@53');
+
+// ===== CORS HEADERS =====
+$allowed_origins = [
+    'https://lakshmidairy.site',
+    'https://www.lakshmidairy.site'
+];
+
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
 if (in_array($origin, $allowed_origins)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 }
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Credentials: true');
@@ -23,7 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Database connection
+// ===== SESSION =====
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// ===== DATABASE CONNECTION FUNCTION =====
 function getDBConnection() {
     try {
         $conn = new PDO(
@@ -44,7 +55,7 @@ function getDBConnection() {
     }
 }
 
-// Response helpers
+// ===== RESPONSE FUNCTIONS =====
 function sendResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     echo json_encode($data);
@@ -57,7 +68,7 @@ function sendError($message, $statusCode = 400) {
     exit();
 }
 
-// Convert snake_case to camelCase
+// ===== SNAKE_CASE TO CAMEL_CASE CONVERTER =====
 function snakeToCamel($array) {
     if (!is_array($array)) {
         return $array;
@@ -65,10 +76,7 @@ function snakeToCamel($array) {
     
     $result = [];
     foreach ($array as $key => $value) {
-        // Convert snake_case to camelCase
         $camelKey = lcfirst(str_replace('_', '', ucwords($key, '_')));
-        
-        // Recursively convert nested arrays
         if (is_array($value)) {
             $result[$camelKey] = array_map('snakeToCamel', $value);
         } else {
@@ -78,21 +86,19 @@ function snakeToCamel($array) {
     return $result;
 }
 
-// Get JSON input
+// ===== JSON INPUT PARSER =====
 function getJsonInput() {
     $input = json_decode(file_get_contents('php://input'), true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
+    if ($input === null && json_last_error() !== JSON_ERROR_NONE) {
         sendError('Invalid JSON input', 400);
     }
-    return $input;
+    return $input ?? [];
 }
 
-// Session management
-session_start();
-
+// ===== AUTHENTICATION FUNCTIONS =====
 function requireAuth() {
     if (!isset($_SESSION['user_id'])) {
-        sendError('Unauthorized', 401);
+        sendError('Authentication required', 401);
     }
     return $_SESSION['user_id'];
 }
@@ -108,3 +114,12 @@ function getCurrentUser() {
         'role' => $_SESSION['role']
     ];
 }
+
+function getCurrentUserId() {
+    return $_SESSION['user_id'] ?? null;
+}
+
+// ===== TIMEZONE =====
+date_default_timezone_set('Asia/Kolkata');
+?>
+

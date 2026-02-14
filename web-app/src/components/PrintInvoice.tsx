@@ -118,13 +118,18 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ purchase, vendor, type, onC
                     fontSize: '12px',
                     lineHeight: '1.4'
                 }}>
-                    {/* Header */}
-                    <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '5px' }}>LAKSHMI DAIRY PRODUCTS</div>
-                        <div style={{ fontSize: '11px', marginBottom: '3px' }}>SF NO 108/1b 109/1c2 PERIAR NAGAR VELLALAPALAYAM POST</div>
-                        <div style={{ fontSize: '11px', marginBottom: '3px' }}>POLLACHI T.K COIMBATORE</div>
-                        <div style={{ fontSize: '11px', marginBottom: '3px' }}>Phone no.: 7300099951 Email: Support@lakshmidairy.in</div>
-                        <div style={{ fontSize: '11px' }}>GSTIN: 33AZCPN1265H1ZL State: 33-Tamil Nadu</div>
+                    {/* Header with Logo */}
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #000', paddingBottom: '10px' }}>
+                        <div style={{ flex: '0 0 auto', marginRight: '16px' }}>
+                            <img src="./static/media/logo.543a511f.jpg" alt="Lakshmi Dairy Logo" style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
+                        </div>
+                        <div style={{ flex: 1, textAlign: 'left' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '5px' }}>LAKSHMI DAIRY PRODUCTS</div>
+                            <div style={{ fontSize: '11px', marginBottom: '3px' }}>SF NO 108/1b 109/1c2 PERIAR NAGAR VELLALAPALAYAM POST</div>
+                            <div style={{ fontSize: '11px', marginBottom: '3px' }}>POLLACHI T.K COIMBATORE</div>
+                            <div style={{ fontSize: '11px', marginBottom: '3px' }}>Phone no.: 7300099951 Email: Support@lakshmidairy.in</div>
+                            <div style={{ fontSize: '11px' }}>GSTIN: 33AZCPN1265H1ZL State: 33-Tamil Nadu</div>
+                        </div>
                     </div>
 
                     {/* Bill Title */}

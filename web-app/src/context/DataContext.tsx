@@ -17,6 +17,9 @@ import { formatNumber } from '../utils/snf';
 import { authAPI, vendorsAPI, milkTypesAPI, purchasesAPI, salesAPI, vehiclesAPI } from '../services/api';
 
 interface DataContextValue {
+    // Transport Reports
+    transportReports: any[];
+    refreshTransportReports: () => Promise<void>;
     currentUser?: User;
     isAuthenticated: boolean;
     isBootstrapped: boolean;
@@ -38,11 +41,11 @@ interface DataContextValue {
     addVehicle: (vehicle: Omit<VehicleInfo, 'id'>) => void;
     purchases: Purchase[];
     addPurchase: (purchase: Omit<Purchase, 'id'>) => Promise<void>;
-    updatePurchaseStatus: (id: number, status: Purchase['status']) => Promise<void>;
+    updatePurchaseStatus: (id: number, statusOrObj: Purchase['status'] | { status: Purchase['status'], kmCharges1?: number, kmCharges3?: number, tollGateCharges?: number }) => Promise<void>;
     deletePurchase: (id: number) => Promise<void>;
     sales: Purchase[];
     addSales: (sales: Omit<Purchase, 'id'>) => Promise<void>;
-    updateSalesStatus: (id: number, status: Purchase['status']) => Promise<void>;
+    updateSalesStatus: (id: number, statusOrObj: Purchase['status'] | { status: Purchase['status'], kmCharges1?: number, kmCharges3?: number, tollGateCharges?: number }) => Promise<void>;
     deleteSales: (id: number) => Promise<void>;
     nextVendorCode: () => string;
     refreshData: () => Promise<void>;
@@ -94,8 +97,12 @@ export const summarizeLiters = (purchases: Purchase[]): { [milkTypeId: number]: 
 
 // Normalize purchase data: convert string numeric fields to numbers
 const normalizePurchase = (purchase: any): Purchase => {
+    // Support both purchases and sales (for transport report)
     return {
         ...purchase,
+        kmCharges1: purchase.kmCharges1 !== undefined ? Number(purchase.kmCharges1) : (purchase.km_charges1 !== undefined ? Number(purchase.km_charges1) : 0),
+        kmCharges3: purchase.kmCharges3 !== undefined ? Number(purchase.kmCharges3) : (purchase.km_charges3 !== undefined ? Number(purchase.km_charges3) : 0),
+        tollGateCharges: purchase.tollGateCharges !== undefined ? Number(purchase.tollGateCharges) : (purchase.toll_gate_charges !== undefined ? Number(purchase.toll_gate_charges) : 0),
         lines: purchase.lines ? purchase.lines.map((line: any) => ({
             ...line,
             milkTypeId: Number(line.milkTypeId) || 0,
@@ -132,6 +139,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [vehicleCapacities, setVehicleCapacities] = useState<VehicleCapacity[]>([]);
     const [transportCompanies, setTransportCompanies] = useState<TransportCompany[]>([]);
     const [vehicleMasters, setVehicleMasters] = useState<Vehicle[]>([]);
+    // Transport Reports state
+    const [transportReports, setTransportReports] = useState<any[]>([]);
+    // Load transport reports (only for transport users)
+    const refreshTransportReports = async () => {
+        setTransportReports([]);
+    };
+    // Load transport reports when userRole is transport
+    useEffect(() => {
+        if (userRole === 'transport') {
+            refreshTransportReports();
+        }
+    }, [userRole]);
 
     // Load all data from API
     const loadData = async () => {
@@ -158,15 +177,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setVehicleCapacities(capacitiesData);
             setTransportCompanies(companiesData);
             setVehicleMasters(vehicleMastersData);
-            
+
+            // Always populate vehicles with VehicleInfo including transportCompany
+            const vehiclesInfo: VehicleInfo[] = vehicleMastersData.map((master: any) => {
+                // If backend provided joined data, use it directly
+                if (master.vehicle_number) {
+                    return {
+                        id: master.id,
+                        vehicleNumber: master.vehicle_number,
+                        driverName: master.driver_name || '',
+                        driverMobile: master.driver_mobile || '',
+                        capacity: master.capacity || '',
+                        transportCompany: master.transport_company || '',
+                    };
+                }
+                // Fallback to manual lookup
+                const vehicleNumber = vehicleNumbersData.find((vn: any) => vn.id === master.vehicleNumberId);
+                const driver = driversData.find((d: any) => d.id === master.driverId);
+                const capacity = capacitiesData.find((vc: any) => vc.id === master.capacityId);
+                const company = companiesData.find((tc: any) => tc.id === master.transportCompanyId);
+                return {
+                    id: master.id,
+                    vehicleNumber: vehicleNumber?.number || '',
+                    driverName: driver?.name || '',
+                    driverMobile: driver?.mobile || '',
+                    capacity: capacity?.capacity || '',
+                    transportCompany: company?.name || '',
+                };
+            });
+            setVehicles(vehiclesInfo);
+
             console.log('✅ Data loaded from API:', { 
                 vendors: vendorsData.length, 
                 purchases: purchasesData.length, 
                 sales: salesData.length,
                 vehicleNumbers: vehicleNumbersData.length,
-                vehicleMasters: vehicleMastersData.length
+                vehicleMasters: vehicleMastersData.length,
+                vehicles: vehiclesInfo.length
             });
-            
             if (purchasesData.length > 0) {
                 console.log('📦 Sample purchase data:', purchasesData[0]);
             }
@@ -290,9 +338,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const updatePurchaseStatus = async (id: number, status: Purchase['status']) => {
-        await purchasesAPI.updateStatus(id, status);
-        setPurchases((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+    // Accepts either status string or object with billing fields
+    const updatePurchaseStatus = async (id: number, statusOrObj: Purchase['status'] | { status: Purchase['status'], kmCharges1?: number, kmCharges3?: number, tollGateCharges?: number }) => {
+        let updateObj: any;
+        if (typeof statusOrObj === 'string') {
+            updateObj = { id, status: statusOrObj };
+        } else {
+            updateObj = { id, ...statusOrObj };
+        }
+        await purchasesAPI.updateStatus(id, updateObj);
+        setPurchases((prev) => prev.map((p) => (p.id === id ? { ...p, ...updateObj } : p)));
     };
 
     const deletePurchase = async (id: number) => {
@@ -310,9 +365,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSales((prev) => [...prev, normalizePurchase(newSale)]);
     };
 
-    const updateSalesStatus = async (id: number, status: Purchase['status']) => {
-        await salesAPI.updateStatus(id, status);
-        setSales((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
+    // Accepts either status string or object with billing fields
+    const updateSalesStatus = async (id: number, statusOrObj: Purchase['status'] | { status: Purchase['status'], kmCharges1?: number, kmCharges3?: number, tollGateCharges?: number }) => {
+        let updateObj: any;
+        if (typeof statusOrObj === 'string') {
+            updateObj = { id, status: statusOrObj };
+        } else {
+            updateObj = { id, ...statusOrObj };
+        }
+        await salesAPI.updateStatus(id, updateObj);
+        setSales((prev) => prev.map((p) => (p.id === id ? { ...p, ...updateObj } : p)));
     };
 
     const deleteSales = async (id: number) => {
@@ -446,6 +508,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const value: DataContextValue = {
+            transportReports,
+            refreshTransportReports,
         currentUser,
         isAuthenticated: !!currentUser,
         isBootstrapped,

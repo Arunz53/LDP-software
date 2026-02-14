@@ -206,7 +206,13 @@ const PurchaseReceivedPage: React.FC = () => {
     const handleAccept = async () => {
         if (window.confirm('Are you sure you want to accept this purchase? This will update the status to Accepted.')) {
             try {
-                await updatePurchaseStatus(purchase.id, 'Accepted');
+                // Save billing info and status in one call
+                await updatePurchaseStatus(purchase.id, {
+                    status: 'Accepted',
+                    kmCharges1,
+                    kmCharges3,
+                    tollGateCharges,
+                });
                 setMessage('Purchase accepted successfully!');
                 setTimeout(() => {
                     history.push('/purchase');

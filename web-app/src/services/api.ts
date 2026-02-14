@@ -1,5 +1,5 @@
 // API Configuration (local dev)
-const API_BASE_URL = 'http://localhost:8080/LDP%20software/LDP-Software/backend/api';
+const API_BASE_URL = 'http://localhost:8081/LDP%20software/LDP-Software/backend/api';
 
 // API Client with credentials
 const apiClient = {
@@ -115,8 +115,8 @@ export const purchasesAPI = {
         return apiClient.post('purchases.php', purchase);
     },
 
-    updateStatus(id: number, status: string) {
-        return apiClient.put('purchases.php', { id, status });
+    updateStatus(id: number, updateObj: any) {
+        return apiClient.put('purchases.php', { id, ...updateObj });
     },
 
     delete(id: number) {
@@ -134,8 +134,8 @@ export const salesAPI = {
         return apiClient.post('sales.php', sale);
     },
 
-    updateStatus(id: number, status: string) {
-        return apiClient.put('sales.php', { id, status });
+    updateStatus(id: number, updateObj: any) {
+        return apiClient.put('sales.php', { id, ...updateObj });
     },
 
     delete(id: number) {
