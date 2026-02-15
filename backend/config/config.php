@@ -7,7 +7,7 @@ define('DB_PASS', 'newpassword');
 
 // CORS Configuration
 // Allow both localhost:3000 and localhost:8081 for local dev
-$allowed_origins = ['http://localhost:3000', 'http://localhost:8081'];
+$allowed_origins = ['http://localhost:3000', 'http://localhost:8081', 'http://localhost:3001'];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowed_origins)) {
     header('Access-Control-Allow-Origin: ' . $origin);
