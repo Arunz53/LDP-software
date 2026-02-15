@@ -1,6 +1,5 @@
--- LDP Software Database Schema
--- For phpMyAdmin: Make sure you have selected the database (u478906159_ldp) before importing
--- DROP DATABASE and CREATE DATABASE statements are removed for phpMyAdmin compatibility
+-- LDP Software Database Schema (All migrations included)
+-- For phpMyAdmin: Make sure you have selected the database before importing
 
 -- Users Table
 CREATE TABLE users (
@@ -100,6 +99,9 @@ CREATE TABLE purchases (
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    km_charges1 DECIMAL(10,2) DEFAULT 0,
+    km_charges3 DECIMAL(10,2) DEFAULT 0,
+    toll_gate_charges DECIMAL(10,2) DEFAULT 0,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id),
     FOREIGN KEY (created_by) REFERENCES users(id),
     FOREIGN KEY (deleted_by) REFERENCES users(id)
@@ -144,6 +146,9 @@ CREATE TABLE sales (
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    km_charges1 DECIMAL(10,2) DEFAULT 0,
+    km_charges3 DECIMAL(10,2) DEFAULT 0,
+    toll_gate_charges DECIMAL(10,2) DEFAULT 0,
     FOREIGN KEY (vendor_id) REFERENCES vendors(id),
     FOREIGN KEY (created_by) REFERENCES users(id),
     FOREIGN KEY (deleted_by) REFERENCES users(id)
@@ -220,3 +225,7 @@ CREATE INDEX idx_sales_date ON sales(date);
 CREATE INDEX idx_sales_vendor ON sales(vendor_id);
 CREATE INDEX idx_vendors_code ON vendors(code);
 CREATE INDEX idx_vendors_name ON vendors(name);
+
+-- Update existing rows to set is_deleted to FALSE if NULL (for migration compatibility)
+UPDATE purchases SET is_deleted = FALSE WHERE is_deleted IS NULL;
+UPDATE sales SET is_deleted = FALSE WHERE is_deleted IS NULL;
