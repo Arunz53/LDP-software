@@ -15,6 +15,9 @@
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
   
+  # Allow direct access to any PHP file in backend
+  RewriteCond %{REQUEST_URI} ^/backend/.*\.php$
+  RewriteRule ^ - [L]
   # Everything else goes to index.html for React Router
   RewriteRule ^ index.html [L]
 </IfModule>

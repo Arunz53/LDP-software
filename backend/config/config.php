@@ -1,3 +1,9 @@
+// Zoho Books API credentials
+define('ZOHO_CLIENT_ID', '1000.RTGJ9XHJEDAVY0LPJY5AXE65CSXLQB');
+define('ZOHO_CLIENT_SECRET', '8b2203e12eb6b79e0f525df89a68c84867461a7dcf');
+define('ZOHO_REDIRECT_URI', 'http://localhost:8080/LDP%20software/LDP-Software/backend/zoho_oauth_callback.php');
+
+
 <?php
 // Database configuration
 define('DB_HOST', 'localhost');
